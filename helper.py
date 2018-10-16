@@ -60,82 +60,44 @@ def check_color(color, colorSpace):
     return color
 
 
-
 def key_map():
 
-    map = {
-        'q': lambda keepGoing: keepGoing = False,
-        
-        'up': lambda x: x['color'][0] + 1 * step_gain,
-        'down': lambda x: x['color'][0] - 1 * step_gain,
-        'right': lambda x: x['color'][1] + 0.02 * step_gain,
-        'left': lambda x: x['color'][1] - 0.02 * step_gain,
-        'shift': lambda x: x['color'][2] - 0.02 * step_gain,
-        'return': lambda x: x['color'][2] + 0.02 * step_gain,
+    keymap = {           
+        'up': [0, 1],
+        'down': [0, -1],
+        'right': [1, 1],
+        'left': [1, -1],
+        'shift': [2, -1],
+        'return': [2, 1],
 
-        'f': lambda x: x['position'][0] - 0.1 * step_gain,
-        'g': lambda x: x['position'][0] + 0.1 * step_gain,
-        't': lambda x: x['position'][1] - 0.1 * step_gain,
-        'v': lambda x: x['position'][1] + 0.1 * step_gain,
+        'BTN_WEST': [0, 1],
+        'BTN_SOUTH': [0, -1],
+        'BTN_EAST': [1, 1],
+        'BTN_NORTH': [1, -1],
+        'BTN_TL': [2, -1],
+        'BTN_TR': [2, 1],
 
-        'h': lambda x: x['size'][0] - 0.05 * step_gain,
-        'j': lambda x: x['size'][0] + 0.05 * step_gain,
-        'n': lambda x: x['size'][1] - 0.05 * step_gain,
-        'u': lambda x: x['size'][1] + 0.05 * step_gain,
     }
 
-        
-    if key in ['q', 'escape']:
-        keepGoing = False
+    return keymap
 
-    # control chromaticity of field
-    elif key == 'up':
-        fields[active_field]['color'][0] += 1 * step_gain
-    elif key == 'down':
-        fields[active_field]['color'][0] -= 1 * step_gain        
-    elif key == 'right':
-        fields[active_field]['color'][1] += 0.02 * step_gain
-    elif key == 'left':
-        fields[active_field]['color'][1] -= 0.02 * step_gain
-    elif key[1:] == 'shift':
-        fields[active_field]['color'][2] -= 0.02 * step_gain
-    elif key == 'return':
-        fields[active_field]['color'][2] += 0.02 * step_gain
+           
+def update_value(mapping, fields, active_field, attribute,
+                 step_gain, step_sizes):
 
-    # control position of field
-    elif key == 'f':
-        fields[active_field]['position'][0] -= 0.1 * step_gain
-    elif key == 'g':
-        fields[active_field]['position'][0] += 0.1 * step_gain
-    elif key == 't':
-        fields[active_field]['position'][1] -= 0.1 * step_gain
-    elif key == 'v':
-        fields[active_field]['position'][1] += 0.1 * step_gain
+    '''
+    '''
+    step_sizes = step_sizes[attribute][mapping[0]]
+    fields[active_field][attribute][mapping[0]] += (
+        (step_sizes * mapping[1]) * step_gain)
+    return fields
+                                                    
 
-    # control size of field
-    elif key == 'h':
-        fields[active_field]['size'][0] -= 0.05 * step_gain
-    elif key == 'j':
-        fields[active_field]['size'][0] += 0.05 * step_gain
-    elif key == 'n':
-        fields[active_field]['size'][1] -= 0.05 * step_gain
-    elif key == 'u':
-        fields[active_field]['size'][1] += 0.05 * step_gain
-        
-    # change which field is active
-    elif key[-1] == '1':
-        active_field = 'rect'
-    elif key[-1] == '2':
-        active_field = 'match'
-    elif key[-1] == '3':
-        active_field = 'AObackground'        
-    elif key[-1] == '4':
-        active_field = 'fixation'
-
-    elif key == 'space':
-        # record data and save
-
-        # randomize next match location
-        fields['match']['color'] = h.random_color(colorSpace)
-        pass
-    
+def drawField(fields, field):
+    # update parameters of each field and draw
+    handle = fields[field]['handle']
+    handle.colorSpace = fields[field]['colorSpace']
+    handle.color = fields[field]['color']
+    handle.size = fields[field]['size'][:2]
+    handle.pos = fields[field]['position'][:2]
+    handle.draw()
