@@ -1,30 +1,52 @@
 from __future__ import division
 import numpy as np
-from psychopy import visual, core, event #import some libraries from PsychoPy
+from psychopy import visual, core, event
+from psychopy.hardware import crs
 
 import helper as h
 import gui as g
 
+
 # set color space
 colorSpace = 'hsv'
 
+# call a parameters gui
 parameters = g.parameters()
 
 #create a window
-mywin = visual.Window([800,600], monitor="testMonitor", units="deg")
+window_size = [800,600]
+monitorName = 'testMonitor'
+fullScreen = False
+screen = 0
+if parameters['bits_sharp']:
+
+    # we need to be rendering to framebuffer (FBO)
+    mywin = visual.Window(window_size, useFBO=True, fullscr=fullScreen,
+                          monitor=monitorName, units='deg',
+                          screen=screen)
+    bits = crs.BitsSharp(win, mode='color++')
+    # You can continue using your window as normal and OpenGL shaders
+    # will convert the output as needed
+    print(bits.info)
+    if not bits.OK:
+        print('failed to connect to Bits box')
+        core.quit()
+
+else:
+    mywin = visual.Window(window_size, monitor=monitorName, fullscr=fullScreen,
+                          units="deg", screen=screen)
+
 
 #create some stimuli
 rect = visual.GratingStim(win=mywin, color=(0., 0.5, 1.), size=5,
                           colorSpace=colorSpace, pos=[-4.,0.], sf=0)
-
 match = visual.GratingStim(win=mywin, color=(0., 0.5, 0.1), size=2,
                           colorSpace=colorSpace, pos=[-4.,0.], sf=0)
-
 fixation = visual.GratingStim(win=mywin, size=0.2, pos=[0.,0.], sf=0, rgb=-1)
-
 AObackground = visual.GratingStim(win=mywin, color=(0., 0.5, 0.5), size=5,
                                   colorSpace=colorSpace, pos=rect.pos * -1.0, sf=0)
 
+# set up defaults if subject data does not exist
 fields = {
     'rect': {'handle': rect,
              'colorSpace': colorSpace,
@@ -48,8 +70,8 @@ fields = {
                      'position': np.array([1., 0.]), },    
 }
 
+# for controlling each component of the scene
 active_field = 'rect'
-show_matching_background = False
 
 #draw the stimuli and update the window
 keepGoing = True
@@ -135,7 +157,8 @@ while keepGoing:
     
     # check that color hasn't gone out of gamut
     for field in fields:
-        h.check_color(fields[field]['color'], colorSpace)    
+        fields[field]['color'] = h.check_color(
+            fields[field]['color'], colorSpace)    
 
     # The position of rect and match are yolked to AO background
     fields['rect']['position'] = -1.0 * fields['AObackground']['position']
@@ -145,12 +168,14 @@ while keepGoing:
     fields['match']['size'] = parameters['OzSize']
 
     fields['fixation']['size'] = 0.05
-    
+
+    # print out the active parameters
     print "active field " + active_field
     for f in fields[active_field]:
         if f not in ['handle', 'colorSpace']:
             print fields[active_field][f]
-    
+
+    # before waiting for the next key press, clear the buffer
     event.clearEvents()
 
 #cleanup
