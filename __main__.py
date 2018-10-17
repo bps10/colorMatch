@@ -1,5 +1,5 @@
 from __future__ import division
-import os, pickle
+import os, pickle, datetime
 import numpy as np
 from psychopy import visual, core, event
 from psychopy.hardware import crs
@@ -29,13 +29,13 @@ windowSize = [800,600]
 monitorName = 'testMonitor'
 fullScreen = False
 screen = 0
-if parameters['bitsSharp']:
+if parameters['isBitsSharp']:
 
     # we need to be rendering to framebuffer (FBO)
     mywin = visual.Window(windowSize, useFBO=True, fullscr=fullScreen,
                           monitor=monitorName, units='deg',
                           screen=screen)
-    bits = crs.BitsSharp(win, mode='color++')
+    bits = crs.BitsSharp(mywin, mode='color++')
     # You can continue using your window as normal and OpenGL shaders
     # will convert the output as needed
     print(bits.info)
@@ -62,40 +62,21 @@ fixation = visual.GratingStim(win=mywin, size=0.2, pos=[0.,0.], sf=0, rgb=-1)
 AObackground = visual.GratingStim(win=mywin, color=(0., 0.5, 0.5), size=5,
                                   colorSpace=colorSpace, pos=rect.pos * -1.0, sf=0)
 
-# set up defaults if subject data does not exist
-fields = {
-    'canvas': {'handle': canvas,
-               'colorSpace': colorSpace,
-               'color': blackColor,
-               'size': canvasSize,
-               'position': np.array([0, 0., 0]), },               
-    'rect': {'handle': rect,
-             'colorSpace': colorSpace,
-             'color': np.array([50, 0.5, 0.5]),
-             'size': np.array([0.95, 0.95, 0]),
-             'position': np.array([-1., 0., 0]), },
-    'match': {'handle': match,
-              'colorSpace': colorSpace,
-              'color': np.array([150, 0.5, 0.15]),
-              'size': np.array([parameters['OzSize'][0], parameters['OzSize'][1], 0]),
-              'position': np.array([-1., 0., 0]), },
-    'fixation': {'handle': fixation,
-                 'colorSpace': colorSpace,                 
-                 'color': np.array([90., 0, 0.9]),
-                 'size': np.array([0.05, 0.05, 0]),
-                 'position': np.array([0., 0., 0]),},
-    'AObackground': {'handle': AObackground,
-                     'colorSpace': colorSpace,
-                     'color': np.array([90, 0.1, 0.4]),
-                     'size': np.array([0.95, 0.95, 0]),
-                     'position': np.array([1., 0., 0]), },
+# get last set of fields if it exists
+fields = h.getFields(parameters, colorSpace, blackColor, canvasSize)
 
-}
+# add handles to stim created above
+fields['canvas']['handle'] = canvas
+fields['rect']['handle'] = rect
+fields['match']['handle'] = match
+fields['fixation']['handle'] = fixation
+fields['AObackground']['handle'] = AObackground
+
 field_list = ['canvas', 'fixation']
 step_sizes = {
-    'color': np.array([1, 0.025, 0.025]),
-    'size': np.array([0.025, 0.025, 0]),
-    'position': np.array([0.025, 0.025, 0])
+    'color': np.array([1, 0.01, 0.01]),
+    'size': np.array([0.015, 0.015, 0]),
+    'position': np.array([0.015, 0.015, 0])
     }
     
 # for controlling each component of the scene
@@ -121,35 +102,40 @@ while keepGoing:
         responseTime = allKeys[2]
         print key, modifier['ctrl'], responseTime
         if modifier['ctrl'] is True:
-            step_gain = 4
+            step_gain = 5
         else:
             step_gain = 1
 
     else:
         key, modifier = lt.getKeyPress()
         if modifier == True:
-            step_gain = 4
+            step_gain = 5
         else:
             step_gain = 1
                 
     # process key press
     if key in ['q', 'escape', 'BTN_MODE']:
         keepGoing = False
-        
-    elif key == 'space':
+
+    # Save the current setting and move on
+    elif key in ['ABS_HAT', 'space']:
         # record data and save
 
         # randomize next match location
         fields['match']['color'] = h.random_color(colorSpace)
 
+        
     # change which field is active
-    print key
-    print stage > 0
-    if (key[-1] == '1' or key == 'BTN_START') and stage < 4:        
+    elif (key[-1] == '1' or key == 'BTN_START') and stage < 4:        
         stage += 1
     elif (key[-1] == '2' or key == 'BTN_SELECT') and stage > 0:
         stage -= 1
-    print stage
+        
+    elif key in keymap:
+        fields = h.update_value(keymap[key], fields, active_field, attribute,
+                                step_gain, step_sizes)
+        
+    # now update parameters based on key stroke
     if stage == 0:
         active_field = 'fixation'
         attribute = 'position'
@@ -161,7 +147,7 @@ while keepGoing:
     elif stage == 2:
         active_field = 'AObackground'
         attribute = 'size'
-        field_list = ['canvas', 'rect', 'AObackground', 'fixation']        
+        field_list = ['canvas', 'AObackground', 'fixation']        
     elif stage == 3:
         active_field = 'rect'
         attribute = 'color'
@@ -170,10 +156,6 @@ while keepGoing:
         active_field = 'match'
         attribute = 'color'
         field_list = ['canvas', 'rect', 'match', 'AObackground', 'fixation']
-        
-    if key in keymap:
-        fields = h.update_value(keymap[key], fields, active_field, attribute,
-                                step_gain, step_sizes)
 
     # check that color hasn't gone out of gamut
     for field in fields:
@@ -200,17 +182,29 @@ while keepGoing:
     event.clearEvents()
 
 # save
-if not os.path.exists(os.path.join('dat', parameters['ID'])):
-    os.makedirs(os.path.join('dat', parameters['ID']))
+basedir = h.getColorMatchDir()
+savedir = os.path.join(basedir, 'dat', parameters['ID'])
+if not os.path.exists(savedir):
+    os.makedirs(savedir)
 
 # delete fields['handles'] can't save those
 for field in fields:
     del fields[field]['handle']
-    
-fname = os.path.join('dat', parameters['ID'], 'fields.pkl')
-pickle.dump(fields, open(fname, 'wb'))
-fname = os.path.join('dat', parameters['ID'],  'parameters.pkl')
-pickle.dump(parameters, open(fname, 'wb'))
+
+date = datetime.datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
+fieldsName = os.path.join(savedir, 'fields_' + date + '.pkl')
+pickle.dump(fields, open(fieldsName, 'wb'))
+
+# now the subject specific parameters
+paramsName = os.path.join(savedir, 'parameters_' + date + '.pkl')
+# add the path to fields
+parameters['lastFields'] = fieldsName
+pickle.dump(parameters, open(paramsName, 'wb'))
+
+# also update lastParameters.txt to reflect this as the most recent set
+f = open(os.path.join(basedir, 'dat', 'lastParameters.txt'), 'w')
+f.write(paramsName)
+f.close()
 
 #cleanup
 mywin.close()

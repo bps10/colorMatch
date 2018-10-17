@@ -1,5 +1,6 @@
 from __future__ import division
 import numpy as np
+import os, pickle
 
 
 def convertHSL2RGB():
@@ -67,7 +68,8 @@ def key_map():
         'down': [0, -1],
         'right': [1, 1],
         'left': [1, -1],
-        'shift': [2, -1],
+        'rshift': [2, -1],
+        'lshift': [2, -1],        
         'return': [2, 1],
 
         'BTN_WEST': [0, 1],
@@ -76,7 +78,6 @@ def key_map():
         'BTN_NORTH': [1, -1],
         'BTN_TL': [2, -1],
         'BTN_TR': [2, 1],
-
     }
 
     return keymap
@@ -101,3 +102,53 @@ def drawField(fields, field):
     handle.size = fields[field]['size'][:2]
     handle.pos = fields[field]['position'][:2]
     handle.draw()
+
+
+def getColorMatchDir():
+    '''
+    '''
+    return os.path.dirname(os.path.abspath(__file__))
+
+
+def getFields(parameters, colorSpace, blackColor, canvasSize):
+    '''
+    '''
+    if 'lastFields' in parameters:
+        # read lastFields from file
+        fields = pickle.load(open(parameters['lastFields'], "rb"))
+    else:
+        # set up defaults if subject data does not exist
+        fields = {
+            'canvas': {
+                       'colorSpace': colorSpace,
+                       'color': blackColor,
+                       'size': canvasSize,
+                       'position': np.array([0, 0., 0]),
+            },               
+            'rect': {
+                     'colorSpace': colorSpace,
+                     'color': np.array([50, 0.5, 0.5]),
+                     'size': np.array([0.95, 0.95, 0]),
+                     'position': np.array([-1., 0., 0]),
+            },
+            'match': {
+                      'colorSpace': colorSpace,
+                      'color': np.array([150, 0.5, 0.15]),
+                      'size': np.array([parameters['OzSize'][0],
+                                        parameters['OzSize'][1], 0]),
+                      'position': np.array([-1., 0., 0]),
+            },
+            'fixation': {
+                         'colorSpace': colorSpace,                 
+                         'color': np.array([90., 0, 0.9]),
+                         'size': np.array([0.05, 0.05, 0]),
+                         'position': np.array([0., 0., 0]),
+            },
+            'AObackground': {
+                             'colorSpace': colorSpace,
+                             'color': np.array([90, 0.1, 0.4]),
+                             'size': np.array([0.95, 0.95, 0]),
+                             'position': np.array([1., 0., 0]),
+            },             
+        }    
+    return fields

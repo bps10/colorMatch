@@ -4,16 +4,29 @@ A program for making color matches in an Oz vision display.
 
 ## Install
 
-Dependencies: [Psychopy](http://www.psychopy.org/), [PySimpleGUI27](http://www.psychopy.org/), [inputs](https://pypi.org/project/inputs/) and [Numpy](http://www.numpy.org/)
+colorMatch depends on [Psychopy](http://www.psychopy.org/) to generate stimuli, [PySimpleGUI27](https://pypi.org/project/PySimpleGUI27/) for the parameters gui, [inputs](https://pypi.org/project/inputs/) for collecting user responses and [Numpy](http://www.numpy.org/) for mathematical computing. To install the dependencies, use:
 
 ```
-sudo pip install Psychopy, PySimpleGUI27, inputs, numpy
+sudo pip install Psychopy PySimpleGUI27 inputs numpy
 ```
 
+To install the program:
+
+```
+git clone https://github.com/bps10/colorMatch
+```
+
+## Quick start
+
+From outside of the colorMatch directory run:
+
+```
+python colorMatch
+```
 
 ## Program behavior
 
-colorMatch creates a fixation dot and two background fields. One superimposes over the AO imaging / leak raster. The second is for matching.
+The colorMatch program creates a fixation dot and two background fields. One superimposes over the AO imaging / leak raster. The second is for matching.
 
 ### Procedure
 
@@ -27,19 +40,24 @@ colorMatch creates a fixation dot and two background fields. One superimposes ov
 
 | keyboard         | gamepad         | reaction                                     |
 |:---------------- | --------------- | -------------------------------------------- |
-|`up arrow`        | `Y`             | increase [hue, width, x position]            |
-|`down arrow`      | `X`             | decrease [hue, width, x position]            |
-|`left arrow`      | `A`             | decrease [saturation, height, y position]    |
-|`right arrow`     | `B`             | increase [saturation, height, y position]    |
+| `up arrow`       | `Y`             | increase [hue, width, x position]            |
+| `down arrow`     | `X`             | decrease [hue, width, x position]            |
+| `left arrow`     | `A`             | decrease [saturation, height, y position]    |
+| `right arrow`    | `B`             | increase [saturation, height, y position]    |
 | `enter`          | `right trigger` | increase [brightness]                        |
 | `shift`          | `left trigger`  | decrease [brightness]                        |
 | `control`        | `bottom trigger`| take large step sizes (applies to all above) |
+| `space`          | `left gamepad`  | accept match                                 |
 | `1`              | `START`         | step forward in experiment (see above)       |
 | `2`              | `BACK`          | step backward in experiment (see above)      |
 | `q` **or** `esc` | `center button` | end the experiment and save                  |
 
 
-### Hardware
+## Calibration
+
+PR-650
+
+## Hardware
 
 * [Bits#](https://www.crsltd.com/tools-for-vision-science/visual-stimulation/bits-sharp-visual-stimulus-processor/)
 

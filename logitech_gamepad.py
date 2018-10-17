@@ -20,7 +20,10 @@ def getKeyPress():
             if event.ev_type == 'Key' and event.state == 0:
                 code = event.code
             if event.ev_type == 'Absolute':
-                modifier = True
+                if event.code == 'ABS_Z' or event.code == 'ABS_RZ':
+                    modifier = True
+                if event.code == 'ABS_HAT0X' or event.code == 'ABS_HAT0Y':
+                    code = 'ABS_HAT'
         if code != None:
             return code, modifier
 
