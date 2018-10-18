@@ -35,9 +35,9 @@ def setup_layout(params):
          sg.InputText(params['age'], key='age')],
         
         [sg.Text('Eye', size=(15, 1)),
-         sg.Radio('left', 'left', key='leftEye'),
-         sg.Radio('right', 'right', key='rightEye', default=True)],
-        
+         sg.Radio('left', 'eye', key='leftEye'),
+         sg.Radio('right', 'eye', key='rightEye', default=True)],
+        [sg.Text('_'  * 60)],
         [sg.Text('Experiment information')],
         [sg.Text('Oz height', size=(15, 1)),
          sg.InputText(params['Oz_height'], key='Oz_height')],
@@ -45,8 +45,8 @@ def setup_layout(params):
          sg.InputText(params['Oz_width'], key='Oz_width')],
         
         [sg.Text('Bits #', size=(15, 1)),
-         sg.Radio('true', 'true', key='isBitsSharp'),
-         sg.Radio('false', 'false', key='noBitsSharp', default=True)],
+         sg.Radio('true', 'bitsSharp', key='isBitsSharp'),
+         sg.Radio('false', 'bitsSharp', key='noBitsSharp', default=True)],
         
         [sg.Submit(), sg.Cancel()]
     ]
@@ -75,7 +75,8 @@ def parameters():
             if len(values[0]) > 5:
                 print 'Opening parameters: ' + values[0]
                 loadParams = pickle.load(open(values[0], "rb"))
-                for p in ['age', 'ID', 'Oz_height', 'Oz_width']:
+                for p in ['age', 'ID', 'Oz_height', 'Oz_width', 'leftEye',
+                          'rightEye', 'isBitsSharp', 'noBitsSharp']:
                     window.FindElement(p).Update(loadParams[p])
 
     window.CloseNonBlocking()   # Don't forget to close your window!
@@ -86,7 +87,7 @@ def parameters():
         values['age'] = float(values['age'])
         if 'lastFields' in savedParams:
             values['lastFields'] = savedParams['lastFields']
-                    
+
         return values
     
     else:

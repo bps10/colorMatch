@@ -26,7 +26,7 @@ python colorMatch
 
 ## Program behavior
 
-The colorMatch program creates a fixation dot and two background fields. One superimposes over the AO imaging / leak raster. The second is for matching.
+The colorMatch program creates a fixation dot and two background fields. One is superimposed over the AO imaging / leak raster, the second is for matching. 
 
 ### Procedure
 
@@ -41,8 +41,8 @@ The colorMatch program creates a fixation dot and two background fields. One sup
 | keyboard         | gamepad         | reaction                                     |
 |:---------------- | --------------- | -------------------------------------------- |
 | `up arrow`       | `Y`             | increase [hue, width, x position]            |
-| `down arrow`     | `X`             | decrease [hue, width, x position]            |
-| `left arrow`     | `A`             | decrease [saturation, height, y position]    |
+| `down arrow`     | `A`             | decrease [hue, width, x position]            |
+| `left arrow`     | `X`             | decrease [saturation, height, y position]    |
 | `right arrow`    | `B`             | increase [saturation, height, y position]    |
 | `enter`          | `right trigger` | increase [brightness]                        |
 | `shift`          | `left trigger`  | decrease [brightness]                        |
@@ -55,12 +55,12 @@ The colorMatch program creates a fixation dot and two background fields. One sup
 
 ## Calibration
 
-PR-650
+Monitor calibration should be done with a spectraradiometer, such as the [PR-650](https://pypi.org/project/PySimpleGUI27/).
 
 ## Hardware
 
-* [Bits#](https://www.crsltd.com/tools-for-vision-science/visual-stimulation/bits-sharp-visual-stimulus-processor/)
+* [Bits#](https://www.crsltd.com/tools-for-vision-science/visual-stimulation/bits-sharp-visual-stimulus-processor/): A stimulus processor from Cambridge Research Systems. Bits# is basically a graphics card designed for vision science experiments. It provides display calibration solutions, precise timing and increase color bit depth (up to 14 bit per channel). Bits# is not necessary to run the program.
 
-* [Logitech F310 gamepad](https://www.logitechg.com/en-us/products/gamepads/f310-gamepad.html). This is optional. The keyboard works just fine as well.
+* [Logitech F310 gamepad](https://www.logitechg.com/en-us/products/gamepads/f310-gamepad.html) for user responses. This is optional. The keyboard works just fine as well.
 
-* [TI lightcrafter](http://www.ti.com/tool/DLPLCR4500EVM)
+* [TI lightcrafter](http://www.ti.com/tool/DLPLCR4500EVM) is the display currently used in the Roorda Lab. Any color display will run with this program.
