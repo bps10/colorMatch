@@ -12,12 +12,12 @@ try:
     fpath = f.read()
     f.close()
     # get fname from directory input
-    savedParams = pickle.load(open(fpath, "rb"))
+    savedParams = pickle.load(open(fpath, "r"))
 
 except IOError:
     fpath = os.path.join(basedir, 'dat', 'default', 'parameters_default.pkl')    
     # get fname from directory input
-    savedParams = pickle.load(open(fpath, "rb"))
+    savedParams = pickle.load(open(fpath, "r"))
 
 def setup_layout(params):
 
