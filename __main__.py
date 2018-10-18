@@ -84,6 +84,9 @@ active_field = 'fixation'
 attribute = 'position'
 
 stage = 0
+trial = 0
+results = {'colorSpace': colorSpace, 'match': {},}
+
 #draw the stimuli and update the window
 keepGoing = True
 while keepGoing:
@@ -120,10 +123,11 @@ while keepGoing:
     # Save the current setting and move on
     elif key in ['ABS_HAT', 'space']:
         # record data and save
-
+        results['match'][trial] = fields['match']['color']
         # randomize next match location
         fields['match']['color'] = h.random_color(colorSpace)
-
+        # increment trial counter
+        trial += 1
         
     # change which field is active
     elif (key[-1] == '1' or key == 'BTN_START') and stage < 4:        
@@ -186,22 +190,28 @@ basedir = h.getColorMatchDir()
 savedir = os.path.join(basedir, 'dat', parameters['ID'])
 if not os.path.exists(savedir):
     os.makedirs(savedir)
+date = datetime.datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
 
+# save the results
+if len(results) > 0:
+    resultsName = os.path.join(savedir, 'results_' + date + '.pkl')
+    pickle.dump(results, open(resultsName, 'wb'))
+print results
+# save the fields structure
 # delete fields['handles'] can't save those
 for field in fields:
     del fields[field]['handle']
 
-date = datetime.datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
 fieldsName = os.path.join(savedir, 'fields_' + date + '.pkl')
 pickle.dump(fields, open(fieldsName, 'wb'))
 
-# now the subject specific parameters
+# save the subject specific parameters
 paramsName = os.path.join(savedir, 'parameters_' + date + '.pkl')
 # add the path to fields
 parameters['lastFields'] = fieldsName
 pickle.dump(parameters, open(paramsName, 'wb'))
 
-# also update lastParameters.txt to reflect this as the most recent set
+# Lastly, update lastParameters.txt to reflect this as the most recent set
 f = open(os.path.join(basedir, 'dat', 'lastParameters.txt'), 'w')
 f.write(paramsName)
 f.close()
