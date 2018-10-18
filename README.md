@@ -7,7 +7,7 @@ A program for making color matches in an Oz vision display.
 colorMatch depends on [Psychopy](http://www.psychopy.org/) to generate stimuli, [PySimpleGUI27](https://pypi.org/project/PySimpleGUI27/) for the parameters gui, [inputs](https://pypi.org/project/inputs/) for collecting user responses and [Numpy](http://www.numpy.org/) for mathematical computing. To install the dependencies, use:
 
 ```
-sudo pip install Psychopy PySimpleGUI27 inputs numpy
+pip install --user Psychopy PySimpleGUI27 inputs numpy
 ```
 
 To install the program:
@@ -23,6 +23,8 @@ From outside of the colorMatch directory run:
 ```
 python colorMatch
 ```
+
+A parameter gui will ask for information about the subject and experimental parameters. When 
 
 ## Program behavior
 
