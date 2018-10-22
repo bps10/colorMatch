@@ -26,6 +26,8 @@ python colorMatch
 
 A parameter gui will ask for information about the subject and experimental parameters. When 
 
+If using a Windows machine, make sure that Game Bar is disabled. To disable: settings > gaming > gamebar
+
 ## Program behavior
 
 The colorMatch program creates a fixation dot and two background fields. One is superimposed over the AO imaging / leak raster, the second is for matching. 

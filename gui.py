@@ -15,9 +15,11 @@ try:
     savedParams = pickle.load(open(fpath, "r"))
 
 except IOError:
+    print 'here'
     fpath = os.path.join(basedir, 'dat', 'default', 'parameters_default.pkl')    
     # get fname from directory input
     savedParams = pickle.load(open(fpath, "r"))
+
 
 def setup_layout(params):
 
@@ -52,13 +54,19 @@ def setup_layout(params):
     ]
     return layout
 
+
+def updateParams(window, params):
+    for p in ['age', 'ID', 'Oz_height', 'Oz_width', 'leftEye',
+          'rightEye', 'isBitsSharp', 'noBitsSharp']:
+        window.FindElement(p).Update(params[p])
+                    
 def parameters():
  
     layout = setup_layout(savedParams)
     window = sg.Window('Matching parameters').Layout(layout)
-    
-    #event, values = window.Layout(layout).Read()
-    
+    # need to run this to update radio buttons
+    updateParams(window, savedParams)
+        
     # You need to perform a ReadNonBlocking on your window every now and then or    
     # else it won't refresh.      
     #      
@@ -74,10 +82,8 @@ def parameters():
         elif event == 'Load':
             if len(values[0]) > 5:
                 print 'Opening parameters: ' + values[0]
-                loadParams = pickle.load(open(values[0], "rb"))
-                for p in ['age', 'ID', 'Oz_height', 'Oz_width', 'leftEye',
-                          'rightEye', 'isBitsSharp', 'noBitsSharp']:
-                    window.FindElement(p).Update(loadParams[p])
+                loadParams = pickle.load(open(values[0], "r"))
+                updateParams(window, loadParams)
 
     window.CloseNonBlocking()   # Don't forget to close your window!
 

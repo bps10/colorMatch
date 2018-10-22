@@ -72,10 +72,10 @@ def key_map():
         'lshift': [2, -1],        
         'return': [2, 1],
 
-        'BTN_WEST': [0, 1],
+        'BTN_NORTH': [0, 1],
         'BTN_SOUTH': [0, -1],
         'BTN_EAST': [1, 1],
-        'BTN_NORTH': [1, -1],
+        'BTN_WEST': [1, -1],
         'BTN_TL': [2, -1],
         'BTN_TR': [2, 1],
     }
@@ -115,7 +115,7 @@ def getFields(parameters, colorSpace, blackColor, canvasSize):
     '''
     if 'lastFields' in parameters:
         # read lastFields from file
-        fields = pickle.load(open(parameters['lastFields'], "rb"))
+        fields = pickle.load(open(parameters['lastFields'], "r"))
     else:
         # set up defaults if subject data does not exist
         fields = {

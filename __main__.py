@@ -25,24 +25,26 @@ else:
     inputDevice = 'keyboard'
 
 #create a window
-windowSize = [800,600]
+windowSize = [1280,800]
 monitorName = 'testMonitor'
-fullScreen = False
-screen = 0
+fullScreen = True
+screen = 1
 if parameters['isBitsSharp']:
 
     # we need to be rendering to framebuffer (FBO)
     mywin = visual.Window(windowSize, useFBO=True, fullscr=fullScreen,
-                          monitor=monitorName, units='deg',
-                          screen=screen)
-    bits = crs.BitsSharp(mywin, mode='color++')
+                          monitor=monitorName, 
+                          units='deg',
+                          screen=screen, gammaCorrect='hardware')
+    bits = crs.BitsSharp(mywin, mode='mono++')
     # You can continue using your window as normal and OpenGL shaders
     # will convert the output as needed
     print(bits.info)
     if not bits.OK:
         print('failed to connect to Bits box')
         core.quit()
-
+    # now, you can change modes using
+    bits.mode = 'color++'
 else:
     mywin = visual.Window(windowSize, monitor=monitorName, fullscr=fullScreen,
                           units="deg", screen=screen)
@@ -120,8 +122,8 @@ while keepGoing:
     if key in ['q', 'escape', 'BTN_MODE']:
         keepGoing = False
 
-    # Save the current setting and move on
-    elif key in ['ABS_HAT', 'space']:
+    # Save the current setting and move on. Stage 4 == matching stage
+    elif key in ['ABS_HAT', 'space'] and stage == 4:
         # record data and save
         results['match'][trial] = fields['match']['color']
         # randomize next match location
@@ -190,12 +192,12 @@ basedir = h.getColorMatchDir()
 savedir = os.path.join(basedir, 'dat', parameters['ID'])
 if not os.path.exists(savedir):
     os.makedirs(savedir)
-date = datetime.datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
+date = datetime.datetime.now().strftime("%Y-%m-%d_%H%M%S")
 
 # save the results
 if len(results) > 0:
     resultsName = os.path.join(savedir, 'results_' + date + '.pkl')
-    pickle.dump(results, open(resultsName, 'wb'))
+    pickle.dump(results, open(resultsName, 'w'))
 print results
 # save the fields structure
 # delete fields['handles'] can't save those
@@ -203,13 +205,13 @@ for field in fields:
     del fields[field]['handle']
 
 fieldsName = os.path.join(savedir, 'fields_' + date + '.pkl')
-pickle.dump(fields, open(fieldsName, 'wb'))
+pickle.dump(fields, open(fieldsName, 'w'))
 
 # save the subject specific parameters
 paramsName = os.path.join(savedir, 'parameters_' + date + '.pkl')
 # add the path to fields
 parameters['lastFields'] = fieldsName
-pickle.dump(parameters, open(paramsName, 'wb'))
+pickle.dump(parameters, open(paramsName, 'w'))
 
 # Lastly, update lastParameters.txt to reflect this as the most recent set
 f = open(os.path.join(basedir, 'dat', 'lastParameters.txt'), 'w')
