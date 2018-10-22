@@ -15,17 +15,15 @@ try:
     savedParams = pickle.load(open(fpath, "r"))
 
 except IOError:
-    print 'here'
-    fpath = os.path.join(basedir, 'dat', 'default', 'parameters_default.pkl')    
     # get fname from directory input
-    savedParams = pickle.load(open(fpath, "r"))
+    savedParams = h.getDefaultParameters()
 
 
 def setup_layout(params):
 
     layout = [
         [sg.Text('Subject information')],
-        [sg.Text('new ID', size=(15, 1)),
+        [sg.Text('new ID', size=(30, 1)),
          sg.InputText(params['ID'], key='ID')],
         [sg.Text('Load prior subject data')],
         [sg.In(),
@@ -33,22 +31,29 @@ def setup_layout(params):
                        initial_folder=os.path.join('colorMatch', 'dat'),
                        file_types=(('pickle', '*.pkl'),)),
          sg.ReadButton('Load')],
-        [sg.Text('Age', size=(15, 1)),
+        [sg.Text('Age', size=(30, 1)),
          sg.InputText(params['age'], key='age')],
         
-        [sg.Text('Eye', size=(15, 1)),
+        [sg.Text('Eye', size=(30, 1)),
          sg.Radio('left', 'eye', key='leftEye'),
          sg.Radio('right', 'eye', key='rightEye', default=True)],
         [sg.Text('_'  * 60)],
         [sg.Text('Experiment information')],
-        [sg.Text('Oz height', size=(15, 1)),
-         sg.InputText(params['Oz_height'], key='Oz_height')],
-        [sg.Text('Oz width', size=(15, 1)),
-         sg.InputText(params['Oz_width'], key='Oz_width')],
+        [sg.Text('Oz height', size=(30, 1)),
+         sg.InputText(params['OzHeight'], key='OzHeight')],
+        [sg.Text('Oz width', size=(30, 1)),
+         sg.InputText(params['OzWidth'], key='OzWidth')],
         
-        [sg.Text('Bits #', size=(15, 1)),
+        [sg.Text('Bits #', size=(30, 1)),
          sg.Radio('true', 'bitsSharp', key='isBitsSharp'),
          sg.Radio('false', 'bitsSharp', key='noBitsSharp', default=True)],
+
+        [sg.Text('Screen (0=local, 1=projector)', size=(30,1)),
+         sg.InputText(params['screen'], key='screen')],
+
+        [sg.Text('Online match mode', size=(30, 1)),
+         sg.Radio('true', 'matchMode', key='onlineMatch', default=True),
+         sg.Radio('false', 'matchMode', key='offlineMatch')],
         
         [sg.Submit(), sg.Cancel()]
     ]
@@ -56,8 +61,9 @@ def setup_layout(params):
 
 
 def updateParams(window, params):
-    for p in ['age', 'ID', 'Oz_height', 'Oz_width', 'leftEye',
-          'rightEye', 'isBitsSharp', 'noBitsSharp']:
+    for p in ['age', 'ID', 'OzHeight', 'OzWidth', 'leftEye',
+              'rightEye', 'isBitsSharp', 'noBitsSharp', 'screen',
+              'offlineMatch', 'onlineMatch']:
         window.FindElement(p).Update(params[p])
                     
 def parameters():
@@ -88,9 +94,10 @@ def parameters():
     window.CloseNonBlocking()   # Don't forget to close your window!
 
     if values is not None:
-        values['OzSize'] = np.array([float(values['Oz_height']),
-                                     float(values['Oz_width'])])
+        values['OzSize'] = np.array([float(values['OzHeight']),
+                                     float(values['OzWidth'])])
         values['age'] = float(values['age'])
+        values['screen'] = int(values['screen'])
         if 'lastFields' in savedParams:
             values['lastFields'] = savedParams['lastFields']
 

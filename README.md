@@ -26,7 +26,7 @@ python colorMatch
 
 A parameter gui will ask for information about the subject and experimental parameters. When 
 
-If using a Windows machine, make sure that Game Bar is disabled. To disable: settings > gaming > gamebar
+*Note: If using a Windows 10 machine, make sure that Game Bar is disabled.* To disable: `settings > gaming > gamebar`
 
 ## Program behavior
 
@@ -56,6 +56,10 @@ The colorMatch program creates a fixation dot and two background fields. One is 
 | `2`              | `BACK`          | step backward in experiment (see above)      |
 | `q` **or** `esc` | `center button` | end the experiment and save                  |
 
+
+### Offline mode
+
+Color matches can be practiced in "offline" mode. In this configuration, two test and reference squares are displayed. After each match, each square is randomly updated with a new color. The subject's task is to adjust the test square until it matches the reference. This mode is intended for practice and baseline measurements. Offline mode can be selected with the radio button in the configuration gui that begins each session.
 
 ## Calibration
 

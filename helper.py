@@ -152,3 +152,20 @@ def getFields(parameters, colorSpace, blackColor, canvasSize):
             },             
         }    
     return fields
+
+
+def getDefaultParameters():
+
+    params = {'isBitsSharp': False,
+              'noBitsSharp': True,
+              'age': 30.0,
+              'leftEye': False,
+              'rightEye': True,
+              'OzWidth': '0.2',
+              'OzHeight': '0.45',
+              'ID': 'test',
+              'screen': 0,
+              'offlineMatch': False,
+              'onlineMatch': True,
+              }
+    return params

@@ -25,17 +25,21 @@ else:
     inputDevice = 'keyboard'
 
 #create a window
-windowSize = [1280,800]
 monitorName = 'testMonitor'
-fullScreen = True
-screen = 1
+if parameters['screen'] > 0:
+    windowSize = [1280,800]
+    fullScreen = True
+else:
+    windowSize = [800, 600]
+    fullScreen = False
+    
 if parameters['isBitsSharp']:
 
     # we need to be rendering to framebuffer (FBO)
     mywin = visual.Window(windowSize, useFBO=True, fullscr=fullScreen,
                           monitor=monitorName, 
                           units='deg',
-                          screen=screen, gammaCorrect='hardware')
+                          screen=parameters['screen'], gammaCorrect='hardware')
     bits = crs.BitsSharp(mywin, mode='mono++')
     # You can continue using your window as normal and OpenGL shaders
     # will convert the output as needed
@@ -47,7 +51,7 @@ if parameters['isBitsSharp']:
     bits.mode = 'color++'
 else:
     mywin = visual.Window(windowSize, monitor=monitorName, fullscr=fullScreen,
-                          units="deg", screen=screen)
+                          units="deg", screen=parameters['screen'])
 
 
 #create some stimuli
@@ -87,7 +91,9 @@ attribute = 'position'
 
 stage = 0
 trial = 0
-results = {'colorSpace': colorSpace, 'match': {},}
+results = {'colorSpace': colorSpace, 'match': {}, }
+if parameters['offlineMatch']:
+    results['reference'] = {}
 
 #draw the stimuli and update the window
 keepGoing = True
@@ -105,7 +111,8 @@ while keepGoing:
         key = allKeys[0]
         modifier = allKeys[1]
         responseTime = allKeys[2]
-        print key, modifier['ctrl'], responseTime
+        print 'Response time {0:0.3f}'.format(responseTime)
+        
         if modifier['ctrl'] is True:
             step_gain = 5
         else:
@@ -117,7 +124,7 @@ while keepGoing:
             step_gain = 5
         else:
             step_gain = 1
-                
+
     # process key press
     if key in ['q', 'escape', 'BTN_MODE']:
         keepGoing = False
@@ -130,9 +137,23 @@ while keepGoing:
         fields['match']['color'] = h.random_color(colorSpace)
         # increment trial counter
         trial += 1
+
+    # Save the current setting and move on. Stage 4 == matching stage
+    elif key in ['ABS_HAT', 'space'] and stage == 3 and parameters['offlineMatch']:
+        # record data and save
+        results['match'][trial] = fields['rect']['color']
+        results['reference'][trial] = fields['AObackground']['color']
+        print fields['rect']['color'], fields['AObackground']['color']
+        # randomize next ref and match color
+        fields['AObackground']['color'] = h.random_color(colorSpace)
+        fields['rect']['color'] = h.random_color(colorSpace)        
+        # increment trial counter
+        trial += 1
         
     # change which field is active
-    elif (key[-1] == '1' or key == 'BTN_START') and stage < 4:        
+    elif (key[-1] == '1' or key == 'BTN_START') and (
+            stage < 4 and parameters['onlineMatch'] or
+            stage < 3 and parameters['offlineMatch']):
         stage += 1
     elif (key[-1] == '2' or key == 'BTN_SELECT') and stage > 0:
         stage -= 1
@@ -158,7 +179,7 @@ while keepGoing:
         active_field = 'rect'
         attribute = 'color'
         field_list = ['canvas', 'rect', 'AObackground', 'fixation']        
-    elif stage == 4:
+    elif stage == 4 and parameters['onlineMatch']:
         active_field = 'match'
         attribute = 'color'
         field_list = ['canvas', 'rect', 'match', 'AObackground', 'fixation']
@@ -189,7 +210,10 @@ while keepGoing:
 
 # save
 basedir = h.getColorMatchDir()
-savedir = os.path.join(basedir, 'dat', parameters['ID'])
+if parameters['offlineMatch']:
+    savedir = os.path.join(basedir, 'dat', 'offline', parameters['ID'])
+else:
+    savedir = os.path.join(basedir, 'dat', parameters['ID'])
 if not os.path.exists(savedir):
     os.makedirs(savedir)
 date = datetime.datetime.now().strftime("%Y-%m-%d_%H%M%S")
