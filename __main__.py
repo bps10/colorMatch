@@ -221,7 +221,9 @@ date = datetime.datetime.now().strftime("%Y-%m-%d_%H%M%S")
 # save the results
 if len(results) > 0:
     resultsName = os.path.join(savedir, 'results_' + date + '.pkl')
-    pickle.dump(results, open(resultsName, 'w'))
+    f = open(resultsName, 'wb')
+    pickle.dump(results, f)
+    f.close()
 print results
 # save the fields structure
 # delete fields['handles'] can't save those
@@ -229,13 +231,17 @@ for field in fields:
     del fields[field]['handle']
 
 fieldsName = os.path.join(savedir, 'fields_' + date + '.pkl')
-pickle.dump(fields, open(fieldsName, 'w'))
+f = open(fieldsName, 'wb')
+pickle.dump(fields, f)
+f.close()
 
 # save the subject specific parameters
 paramsName = os.path.join(savedir, 'parameters_' + date + '.pkl')
 # add the path to fields
 parameters['lastFields'] = fieldsName
-pickle.dump(parameters, open(paramsName, 'w'))
+f = open(paramsName, 'wb')
+pickle.dump(parameters, f)
+f.close()
 
 # Lastly, update lastParameters.txt to reflect this as the most recent set
 f = open(os.path.join(basedir, 'dat', 'lastParameters.txt'), 'w')

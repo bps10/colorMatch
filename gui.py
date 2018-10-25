@@ -12,8 +12,10 @@ try:
     fpath = f.read()
     f.close()
     # get fname from directory input
-    savedParams = pickle.load(open(fpath, "r"))
-
+    f = open(fpath, "rb")
+    savedParams = pickle.load(f)
+    f.close()
+    
 except IOError:
     # get fname from directory input
     savedParams = h.getDefaultParameters()
