@@ -3,6 +3,7 @@ import os, pickle, datetime
 import numpy as np
 from psychopy import visual, core, event
 from psychopy.hardware import crs
+from matplotlib import pyplot as plt
 
 import helper as h
 import gui as g
@@ -204,6 +205,19 @@ while keepGoing:
     for f in fields[active_field]:
         if f not in ['handle', 'colorSpace']:
             print fields[active_field][f]
+
+    # update plots in color space
+    color = fields['rect']['color']
+    print("Current color: "+str(color))
+    print("Trial Number: "+str(trial))
+    LMS_color, RGB_color, LAB_color, XY_color = h.convertHSL2LMS_RGB_LAB_XY(color) 
+    MB_color = np.array([LMS_color[0], LMS_color[-1]])/np.sum(LMS_color[:2])
+    fig, (ax1, ax2, ax3) = plt.subplots(3, 1)
+    ax1.scatter([MB_color[0]], [MB_color[1]]) #MB space
+    ax2.scatter([LAB_color[1]], [LAB_color[2]])
+    ax3.scatter([XY_color[0]], [XY_color[1]])
+    plt.savefig('Color_Space_Visualization_Oz.png')
+
 
     # before waiting for the next key press, clear the buffer
     event.clearEvents()

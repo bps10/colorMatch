@@ -3,20 +3,21 @@ import numpy as np
 import os, pickle
 
 
-def convertHSL2RGB():
-    '''
+def convertHSL2LMS_RGB_LAB_XY(color):
     from psychopy import monitors
     from psychopy.tools import colorspacetools as cspace
-    mon = monitors.Monitor('PX2411W')
-    LMS2RGB = mon.getLMS_RGB(recompute=True)
-    print LMS2RGB
-    RGB2LMS = np.linalg.inv(LMS2RGB)
+    # mon = monitors.Monitor('PX2411W') #TODO change this to the correct monitor
+    # LMS2RGB = mon.getLMS_RGB(recompute=True)
+    # print LMS2RGB
+    # RGB2LMS = np.linalg.inv(LMS2RGB)
+    RGB2LMS = np.eye(3)
     # need to figure out HSL to RGB and then RGB to LMS
-    rgb = cspace.hsv2rgb([0, 0.5, 0.1])
+    rgb = cspace.hsv2rgb(color)
+    rgb = (rgb+1)/2.0
     lms = np.dot(RGB2LMS, rgb)
-    print rgb
-    print lms
-    '''
+    lab = lms #TODO fix this
+    xy = lms[1:] #TODO
+    return lms, rgb, lab, xy
     
 def random_color(colorSpace):
     if colorSpace == 'hsv':
