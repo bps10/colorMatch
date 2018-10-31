@@ -12,8 +12,13 @@ try:
     fpath = f.read()
     f.close()
     # get fname from directory input
-    savedParams = pickle.load(open(fpath, "r"))
-
+    if sys.platform[:3] == 'win':
+        f = open(fpath, "r")
+    else:
+        f = open (fpath, "rb")
+    savedParams = pickle.load(f)
+    f.close()
+    
 except IOError:
     # get fname from directory input
     savedParams = h.getDefaultParameters()

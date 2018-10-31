@@ -133,8 +133,7 @@ def drawField(fields, field, invGammaTable):
     rgb = ct.hsv2rgb(hsv)
     # gamma correct
     rgb = gammaCorrect(invGammaTable, rgb)
-    print '#rgb to field'
-    print rgb
+
     # update parameters of each field and draw
     handle = fields[field]['handle']
     handle.colorSpace = 'rgb'

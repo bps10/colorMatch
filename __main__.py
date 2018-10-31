@@ -3,11 +3,11 @@ import os, pickle, datetime
 import numpy as np
 from psychopy import visual, core, event
 from psychopy.hardware import crs
+from psychopy import tools
 
 import helper as h
 import gui as g
 import logitech_gamepad as lt
-
 
 
 # set color space
@@ -23,18 +23,30 @@ keymap = h.key_map()
 # check if logitech is installed
 if lt.isGamePad():
     inputDevice = 'logitech'
+    use_mouse = False
 else:
     inputDevice = 'keyboard'
+    use_mouse = True
+    # increase this for more mouse sensitivity
+    mouse_sensitivity = 0.5 
+    # if this is true then you can only adjust one of Hue/Saturation at a time,
+    # i.e. the mouse is only allowed to move along one axis (either x or y) at
+    # a time.
+    mouse_fixed_axes = False 
 
 #create a window
 monitorName = 'LightCrafter'
 currentCalibName = 'gamma_31Oct2018'
 
 if parameters['screen'] > 0:
-    windowSize = [1280,800]
+    window_x = 1280
+    window_y = 800
+    windowSize = [window_x,window_y]
     fullScreen = True
 else:
-    windowSize = [800, 600]
+    window_x = 800
+    window_y = 600
+    windowSize = [window_x, window_y]
     fullScreen = False
 
 invGammaTable = h.gammaInverse(monitorName, currentCalibName)
@@ -42,10 +54,12 @@ invGammaTable = h.gammaInverse(monitorName, currentCalibName)
 if parameters['isBitsSharp']:
 
     # we need to be rendering to framebuffer (FBO)
-    mywin = visual.Window(windowSize, useFBO=True, fullscr=fullScreen,
+    mywin = visual.Window(windowSize, useFBO=True, 
+                          fullscr=fullScreen,
                           monitor=monitorName, 
                           units='deg',
-                          screen=parameters['screen'], gammaCorrect='hardware')
+                          screen=parameters['screen'],
+                    gammaCorrect='hardware', winType='pygame')
     bits = crs.BitsSharp(mywin, mode='mono++')
     # You can continue using your window as normal and OpenGL shaders
     # will convert the output as needed
@@ -56,8 +70,10 @@ if parameters['isBitsSharp']:
     # now, you can change modes using
     bits.mode = 'color++'
 else:
-    mywin = visual.Window(windowSize, monitor=monitorName, fullscr=fullScreen,
-                          units="deg", screen=parameters['screen'])
+    mywin = visual.Window(windowSize, monitor=monitorName, 
+                          fullscr=fullScreen, 
+                          units="deg", screen=parameters['screen'],
+                        winType='pygame')
 
 
 #create some stimuli
@@ -104,6 +120,20 @@ results = {'colorSpace': colorSpace, 'match': {}, }
 if parameters['offlineMatch']:
     results['reference'] = {}
 
+#initialize mouse:
+if use_mouse:
+    def_mouse_x = tools.monitorunittools.pix2deg(0, mywin.monitor)
+    def_mouse_y = tools.monitorunittools.pix2deg(0, mywin.monitor)
+    mouse = event.Mouse(visible=False,newPos=[def_mouse_x, def_mouse_y], 
+                        win=mywin)
+    mouse_x, mouse_y = def_mouse_x, def_mouse_y
+
+    mouse.setVisible(True)
+    left_down = False
+    left_click = False
+    right_down = False
+    right_click = False
+
 #draw the stimuli and update the window
 keepGoing = True
 while keepGoing:
@@ -115,31 +145,55 @@ while keepGoing:
     mywin.flip()
         
     # wait for key press
-    if inputDevice == 'keyboard':
-        allKeys = event.waitKeys(modifiers=True, timeStamped=True)[0]
-        key = allKeys[0]
-        modifier = allKeys[1]
-        responseTime = allKeys[2]
-        print 'Response time {0:0.3f}'.format(responseTime)
+   
+    #set default step_gain
+    step_gain = 1
+    
+    if inputDevice != 'logitech':
+        allKeys = event.getKeys(modifiers=True, timeStamped=True)
+        mouse_x, mouse_y = mouse.getPos()
+        d_mouse_x = mouse_x - def_mouse_x
+        d_mouse_y = mouse_y - def_mouse_y
         
-        if modifier['ctrl'] is True:
-            step_gain = 5
+        pressed = mouse.getPressed()
+        mouse.setPos([def_mouse_x, def_mouse_y])
+        left_click = (pressed[0] == 1 and not left_down)
+        right_click = (pressed[2] == 1 and not right_down)
+        left_down = (pressed[0] == 1)
+        right_down = (pressed[2] == 1)
+        if mouse_fixed_axes:
+            if abs(d_mouse_x) > abs(d_mouse_y):
+                d_mouse_y = 0
+            else:
+                d_mouse_x = 0
+        
+        if allKeys != None and len(allKeys) > 0:
+            allKeys = allKeys[0]
+            key = allKeys[0]
+            modifier = allKeys[1]
+            #responseTime = allKeys[2]
+            #print 'Response time {0:0.3f}'.format(responseTime)
+        
+            if modifier['ctrl'] is True or modifier['alt'] is True:
+                step_gain = 5
+
         else:
-            step_gain = 1
+            allKeys = None
+            key = None
+            modifier = None
+
 
     else:
         key, modifier = lt.getKeyPress()
         if modifier == True:
             step_gain = 5
-        else:
-            step_gain = 1
 
-    # process key press
+    # process user input
     if key in ['q', 'escape', 'BTN_MODE']:
         keepGoing = False
 
     # Save the current setting and move on. Stage 4 == matching stage
-    elif key in ['ABS_HAT', 'space'] and stage == 4:
+    elif (key in ['ABS_HAT', 'space'] or right_click) and stage == 4:
         # record data and save
         results['match'][trial] = fields['match']['color']
         # randomize next match location
@@ -148,7 +202,7 @@ while keepGoing:
         trial += 1
 
     # Save the current setting and move on. Stage 4 == matching stage
-    elif key in ['ABS_HAT', 'space'] and stage == 3 and parameters['offlineMatch']:
+    elif (key in ['ABS_HAT', 'space'] or right_click) and stage == 3 and parameters['offlineMatch']:
         # record data and save
         results['match'][trial] = fields['rect']['color']
         results['reference'][trial] = fields['AObackground']['color']
@@ -160,17 +214,29 @@ while keepGoing:
         trial += 1
         
     # change which field is active
-    elif (key[-1] == '1' or key == 'BTN_START') and (
+    elif (left_click or (key != None and (key[-1] == '1' or key == 'BTN_START'))) and (
             stage < 4 and parameters['onlineMatch'] or
             stage < 3 and parameters['offlineMatch']):
         stage += 1
-    elif (key[-1] == '2' or key == 'BTN_SELECT') and stage > 0:
+
+    elif ((key != None and (key[-1] == '2' or key == 'BTN_SELECT'))) and stage > 0:
         stage -= 1
-        
+
     elif key in keymap:
-        fields = h.update_value(keymap[key], fields, active_field, attribute,
-                                step_gain, step_sizes)
-        
+        fields = h.update_value(keymap[key], fields, active_field, attribute, step_gain, step_sizes)
+    
+    # update fields based on new mouse pos
+    if use_mouse and attribute == 'color' and active_field == 'rect':
+        temp = [0, 0]
+        temp[0] = keymap['right'][0]
+        temp[1] = keymap['right'][1]
+        temp[1] *= mouse_sensitivity*180.0*(tools.monitorunittools.deg2pix(d_mouse_x, mywin.monitor)) / mywin.size[0]
+        fields = h.update_value(temp, fields, active_field, attribute, step_gain, step_sizes)
+        temp[0] = keymap['up'][0]
+        temp[1] = keymap['up'][1]
+        temp[1] *= mouse_sensitivity*180.0*(tools.monitorunittools.deg2pix(d_mouse_y, mywin.monitor)) / mywin.size[1]
+        fields = h.update_value(temp, fields, active_field, attribute, step_gain, step_sizes)
+
     # now update parameters based on key stroke
     if stage == 0:
         active_field = 'fixation'
@@ -198,10 +264,10 @@ while keepGoing:
         fields[field]['color'] = h.check_color(
             fields[field]['color'], colorSpace)    
 
-    # The position of rect and match are yolked to AO background
+    # The position of rect and match are yoked to AO background
     relDist = fields['fixation']['position'] - fields['AObackground']['position']
     fields['rect']['position'] = fields['fixation']['position'] + relDist        
-    fields['match']['position'] =fields['fixation']['position'] + relDist
+    fields['match']['position'] = fields['fixation']['position'] + relDist
 
     fields['rect']['size'] = fields['AObackground']['size']
     fields['match']['size'][:2] = parameters['OzSize']
@@ -209,10 +275,12 @@ while keepGoing:
     fields['fixation']['size'] = np.array([0.05, 0.05, 0])
 
     # print out the active parameters
+    """
     print "active field " + active_field
     for f in fields[active_field]:
         if f not in ['handle', 'colorSpace']:
             print fields[active_field][f]
+    """
 
     # before waiting for the next key press, clear the buffer
     event.clearEvents()
@@ -230,7 +298,9 @@ date = datetime.datetime.now().strftime("%Y-%m-%d_%H%M%S")
 # save the results
 if len(results) > 0:
     resultsName = os.path.join(savedir, 'results_' + date + '.pkl')
-    pickle.dump(results, open(resultsName, 'w'))
+    f = open(resultsName, 'wb')
+    pickle.dump(results, f)
+    f.close()
 print results
 # save the fields structure
 # delete fields['handles'] can't save those
@@ -238,13 +308,17 @@ for field in fields:
     del fields[field]['handle']
 
 fieldsName = os.path.join(savedir, 'fields_' + date + '.pkl')
-pickle.dump(fields, open(fieldsName, 'w'))
+f = open(fieldsName, 'wb')
+pickle.dump(fields, f)
+f.close()
 
 # save the subject specific parameters
 paramsName = os.path.join(savedir, 'parameters_' + date + '.pkl')
 # add the path to fields
 parameters['lastFields'] = fieldsName
-pickle.dump(parameters, open(paramsName, 'w'))
+f = open(paramsName, 'wb')
+pickle.dump(parameters, f)
+f.close()
 
 # Lastly, update lastParameters.txt to reflect this as the most recent set
 f = open(os.path.join(basedir, 'dat', 'lastParameters.txt'), 'w')
