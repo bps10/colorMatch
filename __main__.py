@@ -28,7 +28,7 @@ else:
     inputDevice = 'keyboard'
     use_mouse = True
     # increase this for more mouse sensitivity
-    mouse_sensitivity = 0.5 
+    mouse_sensitivity = 0.2
     # if this is true then you can only adjust one of Hue/Saturation at a time,
     # i.e. the mouse is only allowed to move along one axis (either x or y) at
     # a time.
@@ -72,9 +72,7 @@ if parameters['isBitsSharp']:
 else:
     mywin = visual.Window(windowSize, monitor=monitorName, 
                           fullscr=fullScreen, 
-                          units="deg", screen=parameters['screen'],
-                        winType='pygame')
-
+                          units="deg", screen=parameters['screen'])
 
 #create some stimuli
 blackColor = np.array([0, 0, 0])
@@ -128,11 +126,12 @@ if use_mouse:
                         win=mywin)
     mouse_x, mouse_y = def_mouse_x, def_mouse_y
 
-    mouse.setVisible(True)
-    left_down = False
-    left_click = False
-    right_down = False
-    right_click = False
+    mouse.setVisible(False)
+    
+left_down = False
+left_click = False
+right_down = False
+right_click = False
 
 #draw the stimuli and update the window
 keepGoing = True
@@ -197,7 +196,7 @@ while keepGoing:
         # record data and save
         results['match'][trial] = fields['match']['color']
         # randomize next match location
-        fields['match']['color'] = h.random_color(colorSpace)
+        fields['match']['color'] = h.random_color('hsv')
         # increment trial counter
         trial += 1
 
@@ -226,7 +225,7 @@ while keepGoing:
         fields = h.update_value(keymap[key], fields, active_field, attribute, step_gain, step_sizes)
     
     # update fields based on new mouse pos
-    if use_mouse and attribute == 'color' and active_field == 'rect':
+    if use_mouse and attribute == 'color' and active_field in ['rect', 'match']:
         temp = [0, 0]
         temp[0] = keymap['right'][0]
         temp[1] = keymap['right'][1]

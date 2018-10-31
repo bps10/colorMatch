@@ -85,7 +85,7 @@ def check_color(color, colorSpace):
             color[2] = -1
             print 'Contrast cannot exceed -1: setting to -1'
             
-    if colorSpace == 'hsv':
+    elif colorSpace == 'hsv':
         # Make it circular
         color[0] = color[0] % 360
         color[1] = color[1] % 1
@@ -118,7 +118,6 @@ def key_map():
            
 def update_value(mapping, fields, active_field, attribute,
                  step_gain, step_sizes):
-
     '''
     '''
     step_sizes = step_sizes[attribute][mapping[0]]
@@ -130,6 +129,8 @@ def update_value(mapping, fields, active_field, attribute,
 def drawField(fields, field, invGammaTable):
     # convert hsv to rgb
     hsv = fields[field]['color']
+    # double check colors
+    hsv = check_color(hsv, 'hsv')
     rgb = ct.hsv2rgb(hsv)
     # gamma correct
     rgb = gammaCorrect(invGammaTable, rgb)
