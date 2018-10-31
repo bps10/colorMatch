@@ -9,8 +9,10 @@ import gui as g
 import logitech_gamepad as lt
 
 
+
 # set color space
-colorSpace = 'hsv'
+# user will operate in HSV, but we will convert to rgb before sending to device
+colorSpace = 'rgb'
 
 # call a parameters gui
 parameters = g.parameters()
@@ -25,14 +27,18 @@ else:
     inputDevice = 'keyboard'
 
 #create a window
-monitorName = 'testMonitor'
+monitorName = 'LightCrafter'
+currentCalibName = 'gamma_31Oct2018'
+
 if parameters['screen'] > 0:
     windowSize = [1280,800]
     fullScreen = True
 else:
     windowSize = [800, 600]
     fullScreen = False
-    
+
+invGammaTable = h.gammaInverse(monitorName, currentCalibName)
+
 if parameters['isBitsSharp']:
 
     # we need to be rendering to framebuffer (FBO)
@@ -78,6 +84,9 @@ fields['match']['handle'] = match
 fields['fixation']['handle'] = fixation
 fields['AObackground']['handle'] = AObackground
 
+# explicitly set the AObackground color. In the future get this from parameters
+fields['AObackground']['color'] = np.array([210, 0.1, 0.3])
+
 field_list = ['canvas', 'fixation']
 step_sizes = {
     'color': np.array([1, 0.01, 0.01]),
@@ -100,7 +109,7 @@ keepGoing = True
 while keepGoing:
     # need to organize in a list so that match drawn on top of rect
     for field in field_list:
-        h.drawField(fields, field)
+        h.drawField(fields, field, invGammaTable)
         
     # flip new screen
     mywin.flip()

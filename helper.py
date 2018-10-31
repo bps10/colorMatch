@@ -1,8 +1,37 @@
 from __future__ import division
 import numpy as np
 import os, pickle
+from psychopy import monitors
+from psychopy.tools import colorspacetools as ct
 
 
+def gammaCorrect(invGammaTable, rgb):
+    # convert rgb in range -1:1 to range 0:255
+    rgb = np.round((rgb + 1) / 2 * 254, 0).astype(int)
+    corrected_rgb = invGammaTable[rgb, [0, 1, 2]]
+    corrected_rgb = corrected_rgb * 2 - 1
+    return corrected_rgb
+    
+def gammaInverse(monitorName, currentCalibName):
+    mon = monitors.Monitor(monitorName)
+    mon.setCurrent(currentCalibName)
+    gammaGrid = mon.getGammaGrid()
+    minLum = gammaGrid[:, 0]
+    maxLum = gammaGrid[:, 1]
+    gamma = gammaGrid[:, 2]
+    a = gammaGrid[:, 3]
+    b = gammaGrid[:, 4]
+    k = gammaGrid[:, 5]
+    xx = np.zeros((255, 4))
+    for i in range(4):
+        yy = np.linspace(minLum[i], maxLum[i], 255)
+        xx[:, i] = -(np.log(1e-6+k[i] / (yy - a[i]) - 1) + b[i]) / gamma[i]
+    invGammaTable = xx[:, 1:] # 0 column = luminance which we don't need
+    invGammaTable[np.isnan(invGammaTable)] = 0
+    invGammaTable /= invGammaTable.max(0)
+    return invGammaTable
+    
+    
 def convertHSL2RGB():
     '''
     from psychopy import monitors
@@ -23,10 +52,14 @@ def random_color(colorSpace):
         c = np.array([np.random.randint(0, 360),
                       np.random.random_sample(1),
                       np.random.random_sample(1)])
-    if colorSpace == 'dkl':
+    elif colorSpace == 'dkl':
         c = np.array([np.random.randint(-180, 180),
                       np.random.randint(-180, 180),
-                      np.random.random_sample(1) * 2 - 1])        
+                      np.random.random_sample(1) * 2 - 1]) 
+    elif colorSpace == 'rgb':
+        c = np.array([np.random.random_sample(1) * 2 - 1,
+                      np.random.random_sample(1) * 2 - 1,
+                      np.random.random_sample(1) * 2 - 1])     
     return c
 
 def check_color(color, colorSpace):
@@ -94,11 +127,18 @@ def update_value(mapping, fields, active_field, attribute,
     return fields
                                                     
 
-def drawField(fields, field):
+def drawField(fields, field, invGammaTable):
+    # convert hsv to rgb
+    hsv = fields[field]['color']
+    rgb = ct.hsv2rgb(hsv)
+    # gamma correct
+    rgb = gammaCorrect(invGammaTable, rgb)
+    print '#rgb to field'
+    print rgb
     # update parameters of each field and draw
     handle = fields[field]['handle']
-    handle.colorSpace = fields[field]['colorSpace']
-    handle.color = fields[field]['color']
+    handle.colorSpace = 'rgb'
+    handle.color = rgb
     handle.size = fields[field]['size'][:2]
     handle.pos = fields[field]['position'][:2]
     handle.draw()
