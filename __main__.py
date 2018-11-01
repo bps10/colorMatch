@@ -14,11 +14,12 @@ import logitech_gamepad as lt
 trial_params = np.genfromtxt('Oz_Exp_trials.csv', delimiter=',')[1:]
 MB_history, AB_history, XY_history = [], [],[]
 # set color space
-colorSpace = 'hsv'
+# user will operate in HSV, but we will convert to rgb before sending to device
+colorSpace = 'rgb'
 
 # call a parameters gui
 parameters = g.parameters()
-#parameters = {0: u'', 'isBitsSharp': False, 'offlineMatch': True, 'age': 30.0, 'onlineMatch': False, 'leftEye': False, 'OzWidth': '0.2', 'OzSize': np.array([0.45, 0.2 ]), 'noBitsSharp': True, 'rightEye': True, 'screen': 0, 'ID': 'test', 'OzHeight': '0.45'}
+
 # get key map
 keymap = h.key_map()
 
@@ -29,12 +30,17 @@ if lt.isGamePad():
 else:
     inputDevice = 'keyboard'
     use_mouse = True
-    mouse_sensitivity = 0.1 #increase this for more mouse sensitivity
-    mouse_fixed_axes = False #if this is true then you can only adjust one of Hue/Saturation at a time, i.e. the mouse is only allowed to move along one axis (either x or y) at a time.
+    # increase this for more mouse sensitivity
+    mouse_sensitivity = 1.0
+    # if this is true then you can only adjust one of Hue/Saturation at a time,
+    # i.e. the mouse is only allowed to move along one axis (either x or y) at
+    # a time.
+    mouse_fixed_axes = False 
 
 #create a window
+monitorName = 'LightCrafter'
+currentCalibName = 'gamma_31Oct2018'
 
-monitorName = 'testMonitor'
 if parameters['screen'] > 0:
     window_x = 1280
     window_y = 800
@@ -45,14 +51,18 @@ else:
     window_y = 600
     windowSize = [window_x, window_y]
     fullScreen = False
-    
+
+invGammaTable = h.gammaInverse(monitorName, currentCalibName)
+
 if parameters['isBitsSharp']:
 
     # we need to be rendering to framebuffer (FBO)
-    mywin = visual.Window(windowSize, useFBO=True, fullscr=fullScreen,
+    mywin = visual.Window(windowSize, useFBO=True, 
+                          fullscr=fullScreen,
                           monitor=monitorName, 
                           units='deg',
-                          screen=parameters['screen'], gammaCorrect='hardware', winType='pygame')
+                          screen=parameters['screen'],
+                    gammaCorrect='hardware', winType='pygame')
     bits = crs.BitsSharp(mywin, mode='mono++')
     # You can continue using your window as normal and OpenGL shaders
     # will convert the output as needed
@@ -63,9 +73,9 @@ if parameters['isBitsSharp']:
     # now, you can change modes using
     bits.mode = 'color++'
 else:
-    mywin = visual.Window(windowSize, monitor=monitorName, fullscr=fullScreen,
-                          units="deg", screen=parameters['screen'], winType='pygame')
-
+    mywin = visual.Window(windowSize, monitor=monitorName, 
+                          fullscr=fullScreen, 
+                          units="deg", screen=parameters['screen'])
 
 #create some stimuli
 blackColor = np.array([0, 0, 0])
@@ -91,6 +101,9 @@ fields['match']['handle'] = match
 fields['fixation']['handle'] = fixation
 fields['AObackground']['handle'] = AObackground
 
+# explicitly set the AObackground color. In the future get this from parameters
+fields['AObackground']['color'] = np.array([210, 0.1, 0.3])
+
 field_list = ['canvas', 'fixation']
 step_sizes = {
     'color': np.array([1, 0.01, 0.01]),
@@ -110,23 +123,27 @@ if parameters['offlineMatch']:
 
 #initialize mouse:
 if use_mouse:
-    def_mouse_x = tools.monitorunittools.pix2deg(0, mywin.monitor)
-    def_mouse_y = tools.monitorunittools.pix2deg(0, mywin.monitor)
+    def_mouse_x = -tools.monitorunittools.pix2deg(mywin.size[0] * 0.5, mywin.monitor) * 0.5
+    def_mouse_y = -tools.monitorunittools.pix2deg(mywin.size[1] * 0.5, mywin.monitor) * 0.5
     mouse = event.Mouse(visible=False,newPos=[def_mouse_x,def_mouse_y],win=mywin)
-    mouse_x, mouse_y = def_mouse_x, def_mouse_y
-
+    mouse.setPos([def_mouse_x, def_mouse_y])
+    def_mouse_x2, def_mouse_y2 = mouse.getPos()
+    mouse_x = def_mouse_x2
+    mouse_y = def_mouse_y2
     mouse.setVisible(False)
-    left_down = False
-    left_click = False
-    right_down = False
-    right_click = False
+
+    
+left_down = False
+left_click = False
+right_down = False
+right_click = False
 
 #draw the stimuli and update the window
 keepGoing = True
 while keepGoing:
     # need to organize in a list so that match drawn on top of rect
     for field in field_list:
-        h.drawField(fields, field)
+        h.drawField(fields, field, invGammaTable)
         
     # flip new screen
     mywin.flip()
@@ -138,21 +155,28 @@ while keepGoing:
     
     if inputDevice != 'logitech':
         allKeys = event.getKeys(modifiers=True, timeStamped=True)
-        mouse_x, mouse_y = mouse.getPos()
-        d_mouse_x = mouse_x - def_mouse_x
-        d_mouse_y = mouse_y - def_mouse_y
-        pressed = mouse.getPressed()
-        mouse.setPos([def_mouse_x, def_mouse_y])
-        left_click = (pressed[0] == 1 and not left_down)
-        right_click = (pressed[2] == 1 and not right_down)
-        left_down = (pressed[0] == 1)
-        right_down = (pressed[2] == 1)
-        if mouse_fixed_axes:
-            if abs(d_mouse_x) > abs(d_mouse_y):
-                d_mouse_y = 0
+        if use_mouse:
+            if mouse.mouseMoved():
+                mouse_x, mouse_y = mouse.getPos()
+                d_mouse_x = mouse_x - def_mouse_x2
+                d_mouse_y = mouse_y - def_mouse_y2
+                mouse.setPos([def_mouse_x, def_mouse_y])
+                if mouse_fixed_axes:
+                    if abs(d_mouse_x) > abs(d_mouse_y):
+                        d_mouse_y = 0
+                    else:
+                        d_mouse_x = 0
             else:
-                d_mouse_x = 0
-        
+                d_mouse_x = 0.0
+                d_mouse_y = 0.0
+
+            pressed = mouse.getPressed()
+
+            left_click = (pressed[0] == 1 and not left_down)
+            right_click = (pressed[2] == 1 and not right_down)
+            left_down = (pressed[0] == 1)
+            right_down = (pressed[2] == 1)
+    
         if allKeys != None and len(allKeys) > 0:
             allKeys = allKeys[0]
             key = allKeys[0]
@@ -198,7 +222,7 @@ while keepGoing:
         # record data and save
         results['match'][trial] = fields['match']['color']
         # randomize next match location
-        fields['match']['color'] = h.random_color(colorSpace)
+        fields['match']['color'] = h.set_color_to_white('hsv')
         # increment trial counter
         trial += 1
 
@@ -228,8 +252,8 @@ while keepGoing:
     elif key in keymap:
         fields = h.update_value(keymap[key], fields, active_field, attribute, step_gain, step_sizes)
     
-    #update fields based on new mouse pos
-    if use_mouse and attribute == 'color' and active_field == 'rect':
+    # update fields based on new mouse pos
+    if use_mouse and attribute == 'color' and active_field in ['rect', 'match']:
         temp = [0, 0]
         temp[0] = keymap['right'][0]
         temp[1] = keymap['right'][1]
@@ -267,10 +291,10 @@ while keepGoing:
         fields[field]['color'] = h.check_color(
             fields[field]['color'], colorSpace)    
 
-    # The position of rect and match are yolked to AO background
+    # The position of rect and match are yoked to AO background
     relDist = fields['fixation']['position'] - fields['AObackground']['position']
     fields['rect']['position'] = fields['fixation']['position'] + relDist        
-    fields['match']['position'] =fields['fixation']['position'] + relDist
+    fields['match']['position'] = fields['fixation']['position'] + relDist
 
     fields['rect']['size'] = fields['AObackground']['size']
     fields['match']['size'][:2] = parameters['OzSize']

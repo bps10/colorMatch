@@ -1,12 +1,49 @@
 from __future__ import division
 import numpy as np
 import os, pickle
+<<<<<<< HEAD
 from colormath.color_objects import LabColor, xyYColor, sRGBColor
 from colormath.color_conversions import convert_color
 import json
 
 
 def convertHSL2LMS_RGB_LAB_XY(color):
+=======
+from psychopy import monitors
+from psychopy.tools import colorspacetools as ct
+
+
+def gammaCorrect(invGammaTable, rgb):
+    # convert rgb in range -1:1 to range 0:255
+    rgb = np.round((rgb + 1) / 2 * 254, 0).astype(int)
+    corrected_rgb = invGammaTable[rgb, [0, 1, 2]]
+    corrected_rgb = corrected_rgb * 2 - 1
+    return corrected_rgb
+    
+def gammaInverse(monitorName, currentCalibName):
+    mon = monitors.Monitor(monitorName)
+    mon.setCurrent(currentCalibName)
+    gammaGrid = mon.getGammaGrid()
+    minLum = gammaGrid[:, 0]
+    maxLum = gammaGrid[:, 1]
+    gamma = gammaGrid[:, 2]
+    a = gammaGrid[:, 3]
+    b = gammaGrid[:, 4]
+    k = gammaGrid[:, 5]
+    xx = np.zeros((255, 4))
+    for i in range(4):
+        yy = np.linspace(minLum[i], maxLum[i], 255)
+        xx[:, i] = -(np.log(1e-6+k[i] / (yy - a[i]) - 1) + b[i]) / gamma[i]
+    invGammaTable = xx[:, 1:] # 0 column = luminance which we don't need
+    invGammaTable[np.isnan(invGammaTable)] = 0
+    invGammaTable /= invGammaTable.max(0)
+    return invGammaTable
+    
+    
+def convertHSL2RGB():
+    '''
+    from psychopy import monitors
+>>>>>>> 819afeaa1d861217c33930df3a12b0252ce62ef1
     from psychopy.tools import colorspacetools as cspace
     LMS2RGB = json.load(open('LightCrafter.json','r'))['gamma_29Oct2018']['lms_rgb']['__ndarray__']
     RGB2LMS = np.linalg.inv(LMS2RGB)
@@ -24,12 +61,23 @@ def random_color(colorSpace):
         c = np.array([np.random.randint(0, 360),
                       np.random.random_sample(1),
                       np.random.random_sample(1)])
-    if colorSpace == 'dkl':
+    elif colorSpace == 'dkl':
         c = np.array([np.random.randint(-180, 180),
                       np.random.randint(-180, 180),
-                      np.random.random_sample(1) * 2 - 1])        
+                      np.random.random_sample(1) * 2 - 1]) 
+    elif colorSpace == 'rgb':
+        c = np.array([np.random.random_sample(1) * 2 - 1,
+                      np.random.random_sample(1) * 2 - 1,
+                      np.random.random_sample(1) * 2 - 1])     
     return c
 
+def set_color_to_white(colorSpace):
+    if colorSpace == 'hsv':
+        c = np.array([0, 0, 0.5])
+    elif colorSpace == 'rgb':
+        c = np.array([0.1, 0.1, 0.1])
+    return c
+    
 def check_color(color, colorSpace):
     ''' Make sure that color is within bounds of space.
     '''
@@ -53,7 +101,7 @@ def check_color(color, colorSpace):
             color[2] = -1
             print 'Contrast cannot exceed -1: setting to -1'
             
-    if colorSpace == 'hsv':
+    elif colorSpace == 'hsv':
         # Make it circular
         color[0] = color[0] % 360
         color[1] = color[1] % 1
@@ -86,7 +134,6 @@ def key_map():
            
 def update_value(mapping, fields, active_field, attribute,
                  step_gain, step_sizes):
-
     '''
     '''
     step_sizes = step_sizes[attribute][mapping[0]]
@@ -95,11 +142,19 @@ def update_value(mapping, fields, active_field, attribute,
     return fields
                                                     
 
-def drawField(fields, field):
+def drawField(fields, field, invGammaTable):
+    # convert hsv to rgb
+    hsv = fields[field]['color']
+    # double check colors
+    hsv = check_color(hsv, 'hsv')
+    rgb = ct.hsv2rgb(hsv)
+    # gamma correct
+    rgb = gammaCorrect(invGammaTable, rgb)
+
     # update parameters of each field and draw
     handle = fields[field]['handle']
-    handle.colorSpace = fields[field]['colorSpace']
-    handle.color = fields[field]['color']
+    handle.colorSpace = 'rgb'
+    handle.color = rgb
     handle.size = fields[field]['size'][:2]
     handle.pos = fields[field]['position'][:2]
     handle.draw()
@@ -134,7 +189,7 @@ def getFields(parameters, colorSpace, blackColor, canvasSize):
             },
             'match': {
                       'colorSpace': colorSpace,
-                      'color': np.array([150, 0.5, 0.15]),
+                      'color':  set_color_to_white('hsv'),
                       'size': np.array([parameters['OzSize'][0],
                                         parameters['OzSize'][1], 0]),
                       'position': np.array([-1., 0., 0]),
