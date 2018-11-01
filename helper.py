@@ -1,14 +1,9 @@
 from __future__ import division
 import numpy as np
 import os, pickle
-<<<<<<< HEAD
 from colormath.color_objects import LabColor, xyYColor, sRGBColor
 from colormath.color_conversions import convert_color
 import json
-
-
-def convertHSL2LMS_RGB_LAB_XY(color):
-=======
 from psychopy import monitors
 from psychopy.tools import colorspacetools as ct
 
@@ -40,10 +35,7 @@ def gammaInverse(monitorName, currentCalibName):
     return invGammaTable
     
     
-def convertHSL2RGB():
-    '''
-    from psychopy import monitors
->>>>>>> 819afeaa1d861217c33930df3a12b0252ce62ef1
+def convertHSL2LMS_RGB_LAB_XY(color):
     from psychopy.tools import colorspacetools as cspace
     LMS2RGB = json.load(open('LightCrafter.json','r'))['gamma_29Oct2018']['lms_rgb']['__ndarray__']
     RGB2LMS = np.linalg.inv(LMS2RGB)
@@ -66,7 +58,7 @@ def random_color(colorSpace):
                       np.random.randint(-180, 180),
                       np.random.random_sample(1) * 2 - 1]) 
     elif colorSpace == 'rgb':
-        c = np.array([np.random.random_sample(1) * 2 - 1,
+        c = np.asrray([np.random.random_sample(1) * 2 - 1,
                       np.random.random_sample(1) * 2 - 1,
                       np.random.random_sample(1) * 2 - 1])     
     return c
