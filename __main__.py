@@ -10,8 +10,9 @@ import helper as h
 import gui as g
 import logitech_gamepad as lt
 
-
-
+#load trial parameters
+trial_params = np.genfromtxt('Oz_Exp_trials.csv', delimiter=',')[1:]
+MB_history, AB_history, XY_history = [], [],[]
 # set color space
 colorSpace = 'hsv'
 
@@ -179,12 +180,29 @@ while keepGoing:
 
     # Save the current setting and move on. Stage 4 == matching stage
     elif (key in ['ABS_HAT', 'space'] or right_click) and stage == 4:
+        # update plots in color space
+        color = fields['match']['color'] #TODO ensure this is rect, not match
+        LMS_color, RGB_color, LAB_color, XY_color = h.convertHSL2LMS_RGB_LAB_XY(color) 
+        Oz_LMS = trial_params[trial][1:4]
+        MB_color = np.array([LMS_color[0], LMS_color[-1]])/np.sum(LMS_color[:2])
+        fig, (ax1, ax2, ax3) = plt.subplots(3, 1)
+        MB_history.append([MB_color[0], MB_color[1]])
+        ax1.scatter(np.array(MB_history)[:,0], np.array(MB_history)[:,1]) #MB space
+        AB_history.append([LAB_color[1], LAB_color[2]])
+        ax2.scatter(np.array(AB_history)[:,0], np.array(AB_history)[:,1])
+        XY_history.append([XY_color[0], XY_color[1]])
+        ax3.scatter(np.array(XY_history)[:,0], np.array(XY_history)[:,1])
+        print("LMS space error", np.linalg.norm(Oz_LMS-LMS_color))
+        plt.savefig('Color_Space_Visualization_Oz.png')
+
         # record data and save
         results['match'][trial] = fields['match']['color']
         # randomize next match location
         fields['match']['color'] = h.random_color(colorSpace)
         # increment trial counter
         trial += 1
+
+
 
     # Save the current setting and move on. Stage 4 == matching stage
     elif (key in ['ABS_HAT', 'space'] or right_click) and stage == 3 and parameters['offlineMatch']:
@@ -266,18 +284,6 @@ while keepGoing:
         if f not in ['handle', 'colorSpace']:
             print fields[active_field][f]
     """
-
-    # update plots in color space
-    color = fields['rect']['color']
-    print("Current color: "+str(color))
-    print("Trial Number: "+str(trial))
-    LMS_color, RGB_color, LAB_color, XY_color = h.convertHSL2LMS_RGB_LAB_XY(color) 
-    MB_color = np.array([LMS_color[0], LMS_color[-1]])/np.sum(LMS_color[:2])
-    fig, (ax1, ax2, ax3) = plt.subplots(3, 1)
-    ax1.scatter([MB_color[0]], [MB_color[1]]) #MB space
-    ax2.scatter([LAB_color[1]], [LAB_color[2]])
-    ax3.scatter([XY_color[0]], [XY_color[1]])
-    plt.savefig('Color_Space_Visualization_Oz.png')
 
 
     # before waiting for the next key press, clear the buffer

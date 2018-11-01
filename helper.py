@@ -1,22 +1,22 @@
 from __future__ import division
 import numpy as np
 import os, pickle
+from colormath.color_objects import LabColor, xyYColor, sRGBColor
+from colormath.color_conversions import convert_color
+import json
 
 
 def convertHSL2LMS_RGB_LAB_XY(color):
-    from psychopy import monitors
     from psychopy.tools import colorspacetools as cspace
-    # mon = monitors.Monitor('PX2411W') #TODO change this to the correct monitor
-    # LMS2RGB = mon.getLMS_RGB(recompute=True)
-    # print LMS2RGB
-    # RGB2LMS = np.linalg.inv(LMS2RGB)
-    RGB2LMS = np.eye(3)
+    LMS2RGB = json.load(open('LightCrafter.json','r'))['gamma_29Oct2018']['lms_rgb']['__ndarray__']
+    RGB2LMS = np.linalg.inv(LMS2RGB)
     # need to figure out HSL to RGB and then RGB to LMS
     rgb = cspace.hsv2rgb(color)
     rgb = (rgb+1)/2.0
     lms = np.dot(RGB2LMS, rgb)
-    lab = lms #TODO fix this
-    xy = lms[1:] #TODO
+    rgb = sRGBColor(*rgb)
+    lab = np.array(convert_color(rgb, LabColor).get_value_tuple())
+    xy = np.array(convert_color(rgb, xyYColor).get_value_tuple())
     return lms, rgb, lab, xy
     
 def random_color(colorSpace):
