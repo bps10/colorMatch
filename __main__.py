@@ -28,7 +28,7 @@ else:
     inputDevice = 'keyboard'
     use_mouse = True
     # increase this for more mouse sensitivity
-    mouse_sensitivity = 0.2
+    mouse_sensitivity = 1.0
     # if this is true then you can only adjust one of Hue/Saturation at a time,
     # i.e. the mouse is only allowed to move along one axis (either x or y) at
     # a time.
@@ -120,13 +120,15 @@ if parameters['offlineMatch']:
 
 #initialize mouse:
 if use_mouse:
-    def_mouse_x = tools.monitorunittools.pix2deg(0, mywin.monitor)
-    def_mouse_y = tools.monitorunittools.pix2deg(0, mywin.monitor)
-    mouse = event.Mouse(visible=False,newPos=[def_mouse_x, def_mouse_y], 
-                        win=mywin)
-    mouse_x, mouse_y = def_mouse_x, def_mouse_y
-
+    def_mouse_x = -tools.monitorunittools.pix2deg(mywin.size[0] * 0.5, mywin.monitor) * 0.5
+    def_mouse_y = -tools.monitorunittools.pix2deg(mywin.size[1] * 0.5, mywin.monitor) * 0.5
+    mouse = event.Mouse(visible=False,newPos=[def_mouse_x,def_mouse_y],win=mywin)
+    mouse.setPos([def_mouse_x, def_mouse_y])
+    def_mouse_x2, def_mouse_y2 = mouse.getPos()
+    mouse_x = def_mouse_x2
+    mouse_y = def_mouse_y2
     mouse.setVisible(False)
+
     
 left_down = False
 left_click = False
@@ -150,22 +152,28 @@ while keepGoing:
     
     if inputDevice != 'logitech':
         allKeys = event.getKeys(modifiers=True, timeStamped=True)
-        mouse_x, mouse_y = mouse.getPos()
-        d_mouse_x = mouse_x - def_mouse_x
-        d_mouse_y = mouse_y - def_mouse_y
-        
-        pressed = mouse.getPressed()
-        mouse.setPos([def_mouse_x, def_mouse_y])
-        left_click = (pressed[0] == 1 and not left_down)
-        right_click = (pressed[2] == 1 and not right_down)
-        left_down = (pressed[0] == 1)
-        right_down = (pressed[2] == 1)
-        if mouse_fixed_axes:
-            if abs(d_mouse_x) > abs(d_mouse_y):
-                d_mouse_y = 0
+        if use_mouse:
+            if mouse.mouseMoved():
+                mouse_x, mouse_y = mouse.getPos()
+                d_mouse_x = mouse_x - def_mouse_x2
+                d_mouse_y = mouse_y - def_mouse_y2
+                mouse.setPos([def_mouse_x, def_mouse_y])
+                if mouse_fixed_axes:
+                    if abs(d_mouse_x) > abs(d_mouse_y):
+                        d_mouse_y = 0
+                    else:
+                        d_mouse_x = 0
             else:
-                d_mouse_x = 0
-        
+                d_mouse_x = 0.0
+                d_mouse_y = 0.0
+
+            pressed = mouse.getPressed()
+
+            left_click = (pressed[0] == 1 and not left_down)
+            right_click = (pressed[2] == 1 and not right_down)
+            left_down = (pressed[0] == 1)
+            right_down = (pressed[2] == 1)
+    
         if allKeys != None and len(allKeys) > 0:
             allKeys = allKeys[0]
             key = allKeys[0]
