@@ -62,6 +62,13 @@ def random_color(colorSpace):
                       np.random.random_sample(1) * 2 - 1])     
     return c
 
+def set_color_to_white(colorSpace):
+    if colorSpace == 'hsv':
+        c = np.array([0, 0, 0.5])
+    elif colorSpace == 'rgb':
+        c = np.array([0.1, 0.1, 0.1])
+    return c
+    
 def check_color(color, colorSpace):
     ''' Make sure that color is within bounds of space.
     '''
@@ -173,7 +180,7 @@ def getFields(parameters, colorSpace, blackColor, canvasSize):
             },
             'match': {
                       'colorSpace': colorSpace,
-                      'color': np.array([150, 0.5, 0.15]),
+                      'color':  set_color_to_white('hsv'),
                       'size': np.array([parameters['OzSize'][0],
                                         parameters['OzSize'][1], 0]),
                       'position': np.array([-1., 0., 0]),

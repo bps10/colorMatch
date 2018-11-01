@@ -196,7 +196,7 @@ while keepGoing:
         # record data and save
         results['match'][trial] = fields['match']['color']
         # randomize next match location
-        fields['match']['color'] = h.random_color('hsv')
+        fields['match']['color'] = h.set_color_to_white('hsv')
         # increment trial counter
         trial += 1
 
