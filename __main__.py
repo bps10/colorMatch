@@ -15,7 +15,8 @@ import logitech_gamepad as lt
 colorSpace = 'rgb'
 
 # call a parameters gui
-parameters = g.parameters()
+#parameters = g.parameters()
+parameters = {0: u'', 'isBitsSharp': False, 'offlineMatch': True, 'age': 30.0, 'onlineMatch': False, 'leftEye': False, 'OzWidth': '0.2', 'OzSize': np.array([0.45, 0.2 ]), 'noBitsSharp': True, 'rightEye': True, 'screen': 0, 'ID': 'test', 'OzHeight': '0.45'}
 
 # get key map
 keymap = h.key_map()
@@ -36,6 +37,8 @@ else:
 
 #create a window
 monitorName = 'LightCrafter'
+#monitorName = 'testMonitor'
+
 currentCalibName = 'gamma_31Oct2018'
 
 if parameters['screen'] > 0:
@@ -114,7 +117,8 @@ attribute = 'position'
 
 stage = 0
 trial = 0
-results = {'colorSpace': colorSpace, 'match': {}, }
+confidence = 0
+results = {'colorSpace': colorSpace, 'match': {}, 'conf': {}}
 if parameters['offlineMatch']:
     results['reference'] = {}
 
@@ -201,24 +205,37 @@ while keepGoing:
 
     # Save the current setting and move on. Stage 4 == matching stage
     elif (key in ['ABS_HAT', 'space'] or right_click) and stage == 4:
-        # record data and save
-        results['match'][trial] = fields['match']['color']
-        # randomize next match location
-        fields['match']['color'] = h.random_color('hsv')
+        confidence = 0
+        stage = 5
+
+    elif (key in ['ABS_HAT', 'space'] or right_click) and stage == 5:
+        results['conf'][trial] = confidence
+        print "confidence: " + str(confidence)
+        confidence = 0
+        if parameters['offlineMatch']:
+            # record data and save
+            results['match'][trial] = fields['rect']['color']
+            results['reference'][trial] = fields['AObackground']['color']
+            print fields['rect']['color'], fields['AObackground']['color']
+            # randomize next ref and match color
+            fields['AObackground']['color'] = h.random_color('hsv')
+            fields['rect']['color'] = h.random_color('hsv')
+            stage = 3
+        else:
+            # record data and save
+            results['match'][trial] = fields['match']['color']
+            # randomize next match location
+            fields['match']['color'] = h.random_color('hsv')
+            stage = 4
+        
         # increment trial counter
         trial += 1
+        
 
     # Save the current setting and move on. Stage 4 == matching stage
     elif (key in ['ABS_HAT', 'space'] or right_click) and stage == 3 and parameters['offlineMatch']:
-        # record data and save
-        results['match'][trial] = fields['rect']['color']
-        results['reference'][trial] = fields['AObackground']['color']
-        print fields['rect']['color'], fields['AObackground']['color']
-        # randomize next ref and match color
-        fields['AObackground']['color'] = h.random_color(colorSpace)
-        fields['rect']['color'] = h.random_color(colorSpace)        
-        # increment trial counter
-        trial += 1
+        confidence = 0
+        stage = 5
         
     # change which field is active
     elif (left_click or (key != None and (key[-1] == '1' or key == 'BTN_START'))) and (
@@ -228,6 +245,12 @@ while keepGoing:
 
     elif ((key != None and (key[-1] == '2' or key == 'BTN_SELECT'))) and stage > 0:
         stage -= 1
+
+    elif key != None and key == 'up' and stage == 5:
+        confidence += 1
+
+    elif key != None and key == 'down' and stage == 5:
+        confidence -= 1
 
     elif key in keymap:
         fields = h.update_value(keymap[key], fields, active_field, attribute, step_gain, step_sizes)
@@ -260,11 +283,21 @@ while keepGoing:
     elif stage == 3:
         active_field = 'rect'
         attribute = 'color'
-        field_list = ['canvas', 'rect', 'AObackground', 'fixation']        
+        field_list = ['canvas', 'rect', 'AObackground', 'fixation']
     elif stage == 4 and parameters['onlineMatch']:
         active_field = 'match'
         attribute = 'color'
         field_list = ['canvas', 'rect', 'match', 'AObackground', 'fixation']
+
+    elif stage == 5 and parameters['onlineMatch']: #stage 5 is where the subject gives an integer confidence score indicating how close the match was
+        active_field = 'match'
+        attribute = 'color'
+        field_list = ['canvas', 'rect', 'match', 'AObackground', 'fixation']
+
+    elif stage == 5 and not parameters['onlineMatch']:
+        active_field = 'rect'
+        attribute = 'color'
+        field_list = ['canvas', 'rect', 'AObackground', 'fixation']
 
     # check that color hasn't gone out of gamut
     for field in fields:
