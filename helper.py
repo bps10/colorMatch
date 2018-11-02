@@ -1,6 +1,9 @@
 from __future__ import division
 import numpy as np
 import os, pickle
+from colormath.color_objects import LabColor, xyYColor, sRGBColor
+from colormath.color_conversions import convert_color
+import json
 from psychopy import monitors
 from psychopy.tools import colorspacetools as ct
 
@@ -32,20 +35,18 @@ def gammaInverse(monitorName, currentCalibName):
     return invGammaTable
     
     
-def convertHSL2RGB():
-    '''
-    from psychopy import monitors
+def convertHSL2LMS_RGB_LAB_XY(color):
     from psychopy.tools import colorspacetools as cspace
-    mon = monitors.Monitor('PX2411W')
-    LMS2RGB = mon.getLMS_RGB(recompute=True)
-    print LMS2RGB
+    LMS2RGB = json.load(open('LightCrafter.json','r'))['gamma_29Oct2018']['lms_rgb']['__ndarray__']
     RGB2LMS = np.linalg.inv(LMS2RGB)
     # need to figure out HSL to RGB and then RGB to LMS
-    rgb = cspace.hsv2rgb([0, 0.5, 0.1])
+    rgb = cspace.hsv2rgb(color)
+    rgb = (rgb+1)/2.0
     lms = np.dot(RGB2LMS, rgb)
-    print rgb
-    print lms
-    '''
+    rgb = sRGBColor(*rgb)
+    lab = np.array(convert_color(rgb, LabColor).get_value_tuple())
+    xy = np.array(convert_color(rgb, xyYColor).get_value_tuple())
+    return lms, rgb, lab, xy
     
 def random_color(colorSpace):
     if colorSpace == 'hsv':
@@ -57,11 +58,18 @@ def random_color(colorSpace):
                       np.random.randint(-180, 180),
                       np.random.random_sample(1) * 2 - 1]) 
     elif colorSpace == 'rgb':
-        c = np.array([np.random.random_sample(1) * 2 - 1,
+        c = np.asrray([np.random.random_sample(1) * 2 - 1,
                       np.random.random_sample(1) * 2 - 1,
                       np.random.random_sample(1) * 2 - 1])     
     return c
 
+def set_color_to_white(colorSpace):
+    if colorSpace == 'hsv':
+        c = np.array([0, 0, 0.5])
+    elif colorSpace == 'rgb':
+        c = np.array([0.1, 0.1, 0.1])
+    return c
+    
 def check_color(color, colorSpace):
     ''' Make sure that color is within bounds of space.
     '''
@@ -173,7 +181,7 @@ def getFields(parameters, colorSpace, blackColor, canvasSize):
             },
             'match': {
                       'colorSpace': colorSpace,
-                      'color': np.array([150, 0.5, 0.15]),
+                      'color':  set_color_to_white('hsv'),
                       'size': np.array([parameters['OzSize'][0],
                                         parameters['OzSize'][1], 0]),
                       'position': np.array([-1., 0., 0]),

@@ -3,13 +3,17 @@ import os, pickle, datetime
 import numpy as np
 from psychopy import visual, core, event
 from psychopy.hardware import crs
+from matplotlib import pyplot as plt
 from psychopy import tools
 
 import helper as h
 import gui as g
 import logitech_gamepad as lt
 
-
+#load trial parameters
+trial_params = np.genfromtxt('Oz_Exp_trials.csv', delimiter=',')[1:]
+MB_history_match, AB_history_match, XY_history_match = [], [],[]
+MB_history_stim, AB_history_stim, XY_histor_stim = [], [],[]
 # set color space
 # user will operate in HSV, but we will convert to rgb before sending to device
 colorSpace = 'rgb'
@@ -222,20 +226,54 @@ while keepGoing:
             fields['rect']['color'] = h.random_color('hsv')
             stage = 3
         else:
+            # update plots in color space
+            color_match = fields['match']['color'] #TODO ensure this is rect, not match
+            LMS_color, RGB_color, LAB_color, XY_color = h.convertHSL2LMS_RGB_LAB_XY(color_match) 
+            Oz_LMS = trial_params[trial][1:4]
+            MB_color = np.array([LMS_color[0], LMS_color[-1]])/np.sum(LMS_color[:2])
+            fig, (ax1, ax2, ax3) = plt.subplots(3, 1)
+            ax1.title("MB")
+            ax2.title("Lab")
+            ax3.title("xy")
+            MB_history_match.append([MB_color[0], MB_color[1]])
+            ax1.scatter(np.array(MB_history_match)[:,0], np.array(MB_history_match)[:,1]) #MB space
+            AB_history_match.append([LAB_color[1], LAB_color[2]])
+            ax2.scatter(np.array(AB_history_match)[:,0], np.array(AB_history_match)[:,1])
+            XY_history_match.append([XY_color[0], XY_color[1]])
+            ax3.scatter(np.array(XY_history_match)[:,0], np.array(XY_history_match)[:,1])
+
+            color_stim = fields['rect']['color'] #TODO ensure this is rect, not match
+            LMS_color, RGB_color, LAB_color, XY_color = h.convertHSL2LMS_RGB_LAB_XY(color_stim) 
+            Oz_LMS = trial_params[trial][1:4]
+            MB_color = np.array([LMS_color[0], LMS_color[-1]])/np.sum(LMS_color[:2])
+            fig, (ax1, ax2, ax3) = plt.subplots(3, 1)
+            MB_history_stim.append([MB_color[0], MB_color[1]])
+            ax1.scatter(np.array(MB_history_stim)[:,0], np.array(MB_history_stim)[:,1]) #MB space
+            AB_history_match.append([LAB_color[1], LAB_color[2]])
+            ax2.scatter(np.array(AB_history_stim)[:,0], np.array(AB_history_stim)[:,1])
+            XY_history_match.append([XY_color[0], XY_color[1]])
+            ax3.scatter(np.array(XY_history_stim)[:,0], np.array(XY_history_stim)[:,1])
+
+            print("LMS space error", np.linalg.norm(Oz_LMS-LMS_color))
+            plt.savefig('Color_Space_Visualization_Oz.png')
+
             # record data and save
             results['match'][trial] = fields['match']['color']
             # randomize next match location
-            fields['match']['color'] = h.random_color('hsv')
+            fields['match']['color'] = h.set_color_to_white('hsv')
             stage = 4
-        
+
         # increment trial counter
         trial += 1
         
+
+
 
     # Save the current setting and move on. Stage 4 == matching stage
     elif (key in ['ABS_HAT', 'space'] or right_click) and stage == 3 and parameters['offlineMatch']:
         confidence = 0
         stage = 5
+
         
     # change which field is active
     elif (left_click or (key != None and (key[-1] == '1' or key == 'BTN_START'))) and (
@@ -321,6 +359,7 @@ while keepGoing:
         if f not in ['handle', 'colorSpace']:
             print fields[active_field][f]
     """
+
 
     # before waiting for the next key press, clear the buffer
     event.clearEvents()

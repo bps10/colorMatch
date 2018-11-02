@@ -12,10 +12,7 @@ try:
     fpath = f.read()
     f.close()
     # get fname from directory input
-    if sys.platform[:3] == 'win':
-        f = open(fpath, "r")
-    else:
-        f = open (fpath, "rb")
+    f = open(fpath, "rb")
     savedParams = pickle.load(f)
     f.close()
     
@@ -92,7 +89,7 @@ def parameters():
             break
         elif event == 'Load':
             if len(values[0]) > 5:
-                print 'Opening parameters: ' + values[0]
+                print('Opening parameters: ' + values[0])
                 loadParams = pickle.load(open(values[0], "r"))
                 updateParams(window, loadParams)
 
