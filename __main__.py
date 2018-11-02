@@ -225,10 +225,24 @@ while keepGoing:
         LMS_color, RGB_color, LAB_color, XY_color = h.convertHSL2LMS_RGB_LAB_XY(color_match)
         Oz_LMS = trial_params[trial][1:4]
         MB_color = np.array([LMS_color[0], LMS_color[-1]])/np.sum(LMS_color[:2])
-        fig, (ax1, ax2, ax3) = plt.subplots(3, 1)
+        if trial>=1:
+            plt.close()
+        fig, (ax1, ax2, ax3) = plt.subplots(1, 3)
+        plt.tight_layout()
+        plt.grid(True)      
         ax1.set_title("MB")
+        ax1.axis('square')
+        ax1.set_xlim(0,1)
+        ax1.set_ylim(0,1)
+        plt.grid(True)
         ax2.set_title("Lab")
+        ax2.axis('square')
+        ax2.set_xlim(-86.185, 98.254)
+        ax2.set_ylim(-107.863, 94.482)
         ax3.set_title("xy")
+        ax3.axis('square')
+        ax3.set_xlim(0,1)
+        ax3.set_ylim(0,1)
         MB_history_match.append([MB_color[0], MB_color[1]])
         ax1.scatter(np.array(MB_history_match)[:,0], np.array(MB_history_match)[:,1]) #MB space
         AB_history_match.append([LAB_color[1], LAB_color[2]])
@@ -254,7 +268,6 @@ while keepGoing:
 
         print("LMS space error", np.linalg.norm(Oz_LMS-LMS_color))
         plt.savefig('Color_Space_Visualization_Oz.png')
-        
         if parameters['offlineMatch']:
             # record data and save
             results['match'][trial] = fields['rect']['color']
