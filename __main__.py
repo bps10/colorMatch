@@ -13,14 +13,14 @@ import logitech_gamepad as lt
 #load trial parameters
 trial_params = np.genfromtxt('Oz_Exp_trials.csv', delimiter=',')[1:]
 MB_history_match, AB_history_match, XY_history_match = [], [],[]
-MB_history_stim, AB_history_stim, XY_histor_stim = [], [],[]
+MB_history_stim, AB_history_stim, XY_history_stim = [], [],[]
 # set color space
 # user will operate in HSV, but we will convert to rgb before sending to device
 colorSpace = 'rgb'
 
 # call a parameters gui
-#parameters = g.parameters()
-parameters = {0: u'', 'isBitsSharp': False, 'offlineMatch': True, 'age': 30.0, 'onlineMatch': False, 'leftEye': False, 'OzWidth': '0.2', 'OzSize': np.array([0.45, 0.2 ]), 'noBitsSharp': True, 'rightEye': True, 'screen': 0, 'ID': 'test', 'OzHeight': '0.45'}
+parameters = g.parameters()
+#parameters = {0: u'', 'isBitsSharp': False, 'offlineMatch': True, 'age': 30.0, 'onlineMatch': False, 'leftEye': False, 'OzWidth': '0.2', 'OzSize': np.array([0.45, 0.2 ]), 'noBitsSharp': True, 'rightEye': True, 'screen': 0, 'ID': 'test', 'OzHeight': '0.45'}
 
 # get key map
 keymap = h.key_map()
@@ -216,6 +216,37 @@ while keepGoing:
         results['conf'][trial] = confidence
         print "confidence: " + str(confidence)
         confidence = 0
+        
+        color_match = fields['match']['color'] #TODO ensure this is rect, not match
+        LMS_color, RGB_color, LAB_color, XY_color = h.convertHSL2LMS_RGB_LAB_XY(color_match)
+        Oz_LMS = trial_params[trial][1:4]
+        MB_color = np.array([LMS_color[0], LMS_color[-1]])/np.sum(LMS_color[:2])
+        fig, (ax1, ax2, ax3) = plt.subplots(3, 1)
+        ax1.set_title("MB")
+        ax2.set_title("Lab")
+        ax3.set_title("xy")
+        MB_history_match.append([MB_color[0], MB_color[1]])
+        ax1.scatter(np.array(MB_history_match)[:,0], np.array(MB_history_match)[:,1]) #MB space
+        AB_history_match.append([LAB_color[1], LAB_color[2]])
+        ax2.scatter(np.array(AB_history_match)[:,0], np.array(AB_history_match)[:,1])
+        XY_history_match.append([XY_color[0], XY_color[1]])
+        ax3.scatter(np.array(XY_history_match)[:,0], np.array(XY_history_match)[:,1])
+
+        color_stim = fields['rect']['color'] #TODO ensure this is rect, not match
+        LMS_color, RGB_color, LAB_color, XY_color = h.convertHSL2LMS_RGB_LAB_XY(color_stim) 
+        Oz_LMS = trial_params[trial][1:4]
+        MB_color = np.array([LMS_color[0], LMS_color[-1]])/np.sum(LMS_color[:2])
+        fig, (ax1, ax2, ax3) = plt.subplots(3, 1)
+        MB_history_stim.append([MB_color[0], MB_color[1]])
+        ax1.scatter(np.array(MB_history_stim)[:,0], np.array(MB_history_stim)[:,1]) #MB space
+        AB_history_stim.append([LAB_color[1], LAB_color[2]])
+        ax2.scatter(np.array(AB_history_stim)[:,0], np.array(AB_history_stim)[:,1])
+        XY_history_stim.append([XY_color[0], XY_color[1]])
+        ax3.scatter(np.array(XY_history_stim)[:,0], np.array(XY_history_stim)[:,1])
+
+        print("LMS space error", np.linalg.norm(Oz_LMS-LMS_color))
+        plt.savefig('Color_Space_Visualization_Oz.png')
+        
         if parameters['offlineMatch']:
             # record data and save
             results['match'][trial] = fields['rect']['color']
@@ -227,35 +258,7 @@ while keepGoing:
             stage = 3
         else:
             # update plots in color space
-            color_match = fields['match']['color'] #TODO ensure this is rect, not match
-            LMS_color, RGB_color, LAB_color, XY_color = h.convertHSL2LMS_RGB_LAB_XY(color_match) 
-            Oz_LMS = trial_params[trial][1:4]
-            MB_color = np.array([LMS_color[0], LMS_color[-1]])/np.sum(LMS_color[:2])
-            fig, (ax1, ax2, ax3) = plt.subplots(3, 1)
-            ax1.title("MB")
-            ax2.title("Lab")
-            ax3.title("xy")
-            MB_history_match.append([MB_color[0], MB_color[1]])
-            ax1.scatter(np.array(MB_history_match)[:,0], np.array(MB_history_match)[:,1]) #MB space
-            AB_history_match.append([LAB_color[1], LAB_color[2]])
-            ax2.scatter(np.array(AB_history_match)[:,0], np.array(AB_history_match)[:,1])
-            XY_history_match.append([XY_color[0], XY_color[1]])
-            ax3.scatter(np.array(XY_history_match)[:,0], np.array(XY_history_match)[:,1])
 
-            color_stim = fields['rect']['color'] #TODO ensure this is rect, not match
-            LMS_color, RGB_color, LAB_color, XY_color = h.convertHSL2LMS_RGB_LAB_XY(color_stim) 
-            Oz_LMS = trial_params[trial][1:4]
-            MB_color = np.array([LMS_color[0], LMS_color[-1]])/np.sum(LMS_color[:2])
-            fig, (ax1, ax2, ax3) = plt.subplots(3, 1)
-            MB_history_stim.append([MB_color[0], MB_color[1]])
-            ax1.scatter(np.array(MB_history_stim)[:,0], np.array(MB_history_stim)[:,1]) #MB space
-            AB_history_match.append([LAB_color[1], LAB_color[2]])
-            ax2.scatter(np.array(AB_history_stim)[:,0], np.array(AB_history_stim)[:,1])
-            XY_history_match.append([XY_color[0], XY_color[1]])
-            ax3.scatter(np.array(XY_history_stim)[:,0], np.array(XY_history_stim)[:,1])
-
-            print("LMS space error", np.linalg.norm(Oz_LMS-LMS_color))
-            plt.savefig('Color_Space_Visualization_Oz.png')
 
             # record data and save
             results['match'][trial] = fields['match']['color']
