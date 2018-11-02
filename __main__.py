@@ -216,8 +216,12 @@ while keepGoing:
         results['conf'][trial] = confidence
         print "confidence: " + str(confidence)
         confidence = 0
+        print "FIELDS", fields['match']['color']
+        if parameters['offlineMatch']:
+            color_match = fields['rect']['color']
+        else:
+            color_match = fields['match']['color']
         
-        color_match = fields['match']['color'] #TODO ensure this is rect, not match
         LMS_color, RGB_color, LAB_color, XY_color = h.convertHSL2LMS_RGB_LAB_XY(color_match)
         Oz_LMS = trial_params[trial][1:4]
         MB_color = np.array([LMS_color[0], LMS_color[-1]])/np.sum(LMS_color[:2])
@@ -231,12 +235,16 @@ while keepGoing:
         ax2.scatter(np.array(AB_history_match)[:,0], np.array(AB_history_match)[:,1])
         XY_history_match.append([XY_color[0], XY_color[1]])
         ax3.scatter(np.array(XY_history_match)[:,0], np.array(XY_history_match)[:,1])
+        print "FIELDS2", fields['rect']['color']
 
-        color_stim = fields['rect']['color'] #TODO ensure this is rect, not match
+        if parameters['offlineMatch']:
+            color_stim = fields['AObackground']['color']
+        else:
+            color_stim = fields['rect']['color']
         LMS_color, RGB_color, LAB_color, XY_color = h.convertHSL2LMS_RGB_LAB_XY(color_stim) 
         Oz_LMS = trial_params[trial][1:4]
         MB_color = np.array([LMS_color[0], LMS_color[-1]])/np.sum(LMS_color[:2])
-        fig, (ax1, ax2, ax3) = plt.subplots(3, 1)
+        #fig, (ax1, ax2, ax3) = plt.subplots(3, 1)
         MB_history_stim.append([MB_color[0], MB_color[1]])
         ax1.scatter(np.array(MB_history_stim)[:,0], np.array(MB_history_stim)[:,1]) #MB space
         AB_history_stim.append([LAB_color[1], LAB_color[2]])
