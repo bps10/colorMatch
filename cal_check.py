@@ -73,7 +73,7 @@ hsv_vals = np.array([np.zeros(len(ramp)), np.zeros(len(ramp)), ramp]).T
 for hsv in hsv_vals:
     rgb = ct.hsv2rgb(hsv)
     rgb = h.gammaCorrect(invGammaTable, rgb)
-    print rgb
+    print(rgb)
     rect.color = rgb
     canvas.draw()
     rect.draw()
