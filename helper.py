@@ -1,6 +1,7 @@
 from __future__ import division
 import numpy as np
-import os, pickle
+import os, pickle, datetime
+
 from colormath.color_objects import LabColor, xyYColor, sRGBColor
 from colormath.color_conversions import convert_color
 import json
@@ -217,3 +218,47 @@ def getDefaultParameters():
               'onlineMatch': True,
               }
     return params
+
+
+def saveData(parameters, results, fields):
+    
+    # save
+    basedir = getColorMatchDir()
+    if parameters['offlineMatch']:
+        savedir = os.path.join(basedir, 'dat', 'offline', parameters['ID'])
+    else:
+        savedir = os.path.join(basedir, 'dat', parameters['ID'])
+    if not os.path.exists(savedir):
+        os.makedirs(savedir)
+    date = datetime.datetime.now().strftime("%Y-%m-%d_%H%M%S")
+    
+    # save the results
+    if len(results) > 0:
+        resultsName = os.path.join(savedir, 'results_' + date + '.pkl')
+        f = open(resultsName, 'wb')
+        pickle.dump(results, f)
+        f.close()
+    print results
+    
+    # save the fields structure
+    # delete fields['handles'] can't save those
+    for field in fields:
+        del fields[field]['handle']
+    
+    fieldsName = os.path.join(savedir, 'fields_' + date + '.pkl')
+    f = open(fieldsName, 'wb')
+    pickle.dump(fields, f)
+    f.close()
+    
+    # save the subject specific parameters
+    paramsName = os.path.join(savedir, 'parameters_' + date + '.pkl')
+    # add the path to fields
+    parameters['lastFields'] = fieldsName
+    f = open(paramsName, 'wb')
+    pickle.dump(parameters, f)
+    f.close()
+    
+    # Lastly, update lastParameters.txt to reflect this as the most recent set
+    f = open(os.path.join(basedir, 'dat', 'lastParameters.txt'), 'w')
+    f.write(paramsName)
+    f.close()
