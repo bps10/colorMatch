@@ -148,11 +148,10 @@ background
 # --- set up results
 results = {'confidence': [], 'hue': [], 'saturation': [], 'value': [],
            'L_intensity': [], 'M_intensity': [], 'S_intensity': [],
-           'delta_MB': [], 'new_MB_l': [], 'new_MB_s': [], } 
+           'delta_MB': [], 'new_MB_l': [], 'new_MB_s': [], }
 
 if parameters['offlineMatch']:
-    results['reference'] = {}
-    results = {}
+    results = {'confidence': [], 'reference': {}, 'match': {}, }
 
 # initialize mouse:
 if use_mouse:
@@ -239,28 +238,6 @@ try:
 
         elif (key in ['ABS_HAT', 'space'] or right_click) and stage == 5:
 
-            # results
-            hue = fields['match']['color'][0]
-            saturation = fields['match']['color'][1]
-            value = fields['match']['color'][2]
-
-            # add trial to the results structure
-            results['confidence'].append(confidence)
-            results['hue'].append(hue)
-            results['saturation'].append(saturation)
-            results['value'].append(value)
-            results['L_intensity'].append(trial_params.loc[trial].L_intensity)
-            results['M_intensity'].append(trial_params.loc[trial].M_intensity)
-            results['S_intensity'].append(trial_params.loc[trial].S_intensity)
-            results['delta_MB'].append(trial_params.loc[trial].delta_MB)
-            results['new_MB_l'].append(trial_params.loc[trial].new_MB_l)
-            results['new_MB_s'].append(trial_params.loc[trial].new_MB_s)
-
-            # print out some of the results
-            print 'Trial #{0:d}'.format(trial)
-            print 'confidence: {0:d}'.format(confidence)
-            print 'MATCH HSV: ', fields['match']['color']
-
             if parameters['offlineMatch']:
                 # record data and save
                 results['match'][trial] = fields['rect']['color']
@@ -272,6 +249,28 @@ try:
                 fields['rect']['color'] = h.random_color('hsv')
                 stage = 3
             else:
+                # results
+                hue = fields['match']['color'][0]
+                saturation = fields['match']['color'][1]
+                value = fields['match']['color'][2]
+
+                # add trial to the results structure
+                results['confidence'].append(confidence)
+                results['hue'].append(hue)
+                results['saturation'].append(saturation)
+                results['value'].append(value)
+                results['L_intensity'].append(trial_params.loc[trial].L_intensity)
+                results['M_intensity'].append(trial_params.loc[trial].M_intensity)
+                results['S_intensity'].append(trial_params.loc[trial].S_intensity)
+                results['delta_MB'].append(trial_params.loc[trial].delta_MB)
+                results['new_MB_l'].append(trial_params.loc[trial].new_MB_l)
+                results['new_MB_s'].append(trial_params.loc[trial].new_MB_s)
+
+                # print out some of the results
+                print 'Trial #{0:d}'.format(trial)
+                print 'confidence: {0:d}'.format(confidence)
+                print 'MATCH HSV: ', fields['match']['color']
+
                 _results = pn.DataFrame(results)
                 # update plots in color space
                 matchRGB = cs.hsv2rgb(_results.hue, _results.saturation, _results.value)
@@ -321,6 +320,8 @@ try:
 
         elif key != None and key == 'up' and stage == 5:
             confidence += 1
+            noteA.play()
+            noteC.play()
 
         elif key != None and key == 'down' and stage == 5:
             confidence -= 1
