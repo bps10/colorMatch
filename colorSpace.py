@@ -24,9 +24,9 @@ def getXYZ_LMS_RGB(plot_basis=False):
     wavelengths = np.arange(390, 730, 1)
 
     # load in the measured gamut
-    _rgb = np.asarray(json.load(open(os.path.join(thisdir,
+    _rgb = np.asarray(json.load(open(os.path.join(thisdir, 'assets',
         'LightCrafter.json'),'r'))['gamma_29Oct2018']['spectraRGB']['__ndarray__']).T
-    wvlen = np.asarray(json.load(open(os.path.join(thisdir,
+    wvlen = np.asarray(json.load(open(os.path.join(thisdir, 'assets',
         'LightCrafter.json'),'r'))['gamma_29Oct2018']['spectraNM']['__ndarray__'])
     # interpolate
     RGB = np.zeros((len(wavelengths), 3))
@@ -34,7 +34,7 @@ def getXYZ_LMS_RGB(plot_basis=False):
         RGB[:, i] = np.interp(wavelengths, wvlen, _rgb[:, i])
 
     # load spectral sensitivity of LMS cones
-    _spectsens = np.loadtxt(os.path.join(thisdir, 'linss2_10e_1_8dp.csv'),
+    _spectsens = np.loadtxt(os.path.join(thisdir, 'assets', 'linss2_10e_1_8dp.csv'),
                             delimiter=',')
     wvlen = _spectsens[:, 0]
     # interpolate
@@ -44,7 +44,7 @@ def getXYZ_LMS_RGB(plot_basis=False):
         LMS[:, i] /= LMS[:, i].max()
 
     # load XYZ functions
-    _xyz = np.loadtxt(os.path.join(thisdir, 'lin2012xyz2e_1_7sf.csv'),
+    _xyz = np.loadtxt(os.path.join(thisdir, 'assets', 'lin2012xyz2e_1_7sf.csv'),
                       delimiter=',')
     wvlen = _xyz[:, 0]
     # interpolate

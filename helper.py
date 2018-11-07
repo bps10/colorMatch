@@ -1,8 +1,7 @@
 from __future__ import division
 import numpy as np
-import os, pickle, datetime
+import os, pickle, datetime, json
 
-import json
 import pandas as pn
 from psychopy import monitors
 from psychopy.tools import colorspacetools as cspace
@@ -38,7 +37,8 @@ def gammaInverse(monitorName, currentCalibName):
 
 def convertHSL2LMS_RGB_LAB_XY(color):
     from psychopy.tools import colorspacetools as cspace
-    LMS2RGB = json.load(open('LightCrafter.json','r'))['gamma_29Oct2018']['lms_rgb']['__ndarray__']
+    LMS2RGB = json.load(open(os.path.join('assets', 'LightCrafter.json'),
+                             'r'))['gamma_29Oct2018']['lms_rgb']['__ndarray__']
     RGB2LMS = np.linalg.inv(LMS2RGB)
     # need to figure out HSL to RGB and then RGB to LMS
     rgb = cspace.hsv2rgb(color)
@@ -272,10 +272,10 @@ def loadMBandLightCrafter():
     '''
     thisdir = os.path.dirname(os.path.abspath(__file__))
     # load MB spectrum locus.
-    mb = pn.read_csv(os.path.join(thisdir, 'mb2_1.csv'),
+    mb = pn.read_csv(os.path.join(thisdir, 'assets', 'mb2_1.csv'),
                      names=['wavelength', 'l', 'm', 's'])
     # load in measured spectrum of the light crafter
-    LC = pn.read_csv(os.path.join(thisdir, 'LightCrafter_spectra.csv'),
+    LC = pn.read_csv(os.path.join(thisdir, 'assets', 'LightCrafter_spectra.csv'),
                      names=['wavelength', 'R', 'G', 'B'])
     # find the common wavelengths
     LC_mb = pn.merge(mb, LC, on='wavelength')

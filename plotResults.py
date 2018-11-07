@@ -1,4 +1,5 @@
 from __future__ import division
+import datetime, os
 import numpy as np
 import pandas as pn
 import matplotlib.pylab as plt
@@ -58,9 +59,6 @@ def hueAndSaturation(data, name):
 def colorSpaces(data, background, savename=None, plotMeans=True):
     '''
     '''
-    if not savename:
-        savename = datatime.today().strftime('%Y_%d_%m')
-
     # plot
     fig = plt.figure(figsize=(14, 4))
     fig.tight_layout()
@@ -104,7 +102,6 @@ def colorSpaces(data, background, savename=None, plotMeans=True):
 
     ax3.plot(data.match_l, data.match_s, 'k+')
 
-
     ax3.set_xlim([0.6, 0.75])
     ax3.set_ylim([0, 0.05])
     ax3.set_xlabel('L/(L+M)')
@@ -121,6 +118,8 @@ def colorSpaces(data, background, savename=None, plotMeans=True):
         ax1.plot(average_x, average_y, 'r.-')
         ax3.plot(average_l, average_s, 'r.-')
 
-    fig.savefig(savename + 'Oz_Exp_trials.svg')
-    fig.savefig(savename + 'Oz_Exp_trials.pdf')
+    date = datetime.datetime.today().strftime('%Y_%d_%m')
+
+    fig.savefig(os.path.join('dat', savename, date + 'Oz_Exp_trials.svg'))
+    fig.savefig(os.path.join('dat', savename, date + 'Oz_Exp_trials.pdf'))
     fig.savefig('Color_Space_Visualization_Oz.png')

@@ -17,8 +17,9 @@ import plotResults as plot
 thisdir = os.path.dirname(os.path.abspath(__file__))
 
 #load trial parameters
-trial_params = np.genfromtxt(os.path.join(thisdir, 'Oz_Exp_trials.csv'),
-                             delimiter=',')[1:]
+trial_params = pn.read_csv(os.path.join(thisdir, 'assets', 'Oz_Exp_trials.csv'),
+                           header=0, index_col=0)
+
 MB_history_match, AB_history_match, XY_history_match = [], [],[]
 MB_history_stim, AB_history_stim, XY_history_stim = [], [],[]
 
@@ -145,7 +146,10 @@ background.loc[0] = np.hstack([backgroundMB, backgroundXYZ[:2]])
 background
 
 # --- set up results
-results = pn.DataFrame(columns=['confidence', 'hue', 'saturation', 'value'])
+results = {'confidence': [], 'hue': [], 'saturation': [], 'value': [],
+           'L_intensity': [], 'M_intensity': [], 'S_intensity': [],
+           'delta_MB': [], 'new_MB_l': [], 'new_MB_s': [], } 
+
 if parameters['offlineMatch']:
     results['reference'] = {}
     results = {}
@@ -234,18 +238,28 @@ try:
             stage = 5
 
         elif (key in ['ABS_HAT', 'space'] or right_click) and stage == 5:
+
+            # results
             hue = fields['match']['color'][0]
             saturation = fields['match']['color'][1]
             value = fields['match']['color'][2]
+
             # add trial to the results structure
-            results.loc[trial] = [confidence, hue, saturation, value]
+            results['confidence'].append(confidence)
+            results['hue'].append(hue)
+            results['saturation'].append(saturation)
+            results['value'].append(value)
+            results['L_intensity'].append(trial_params.loc[trial].L_intensity)
+            results['M_intensity'].append(trial_params.loc[trial].M_intensity)
+            results['S_intensity'].append(trial_params.loc[trial].S_intensity)
+            results['delta_MB'].append(trial_params.loc[trial].delta_MB)
+            results['new_MB_l'].append(trial_params.loc[trial].new_MB_l)
+            results['new_MB_s'].append(trial_params.loc[trial].new_MB_s)
 
             # print out some of the results
-            print "confidence: " + str(confidence)
-            print "MATCH HSV: ", fields['match']['color']
-
-            # reset confidence to zero for next trial
-            confidence = 0
+            print 'Trial #{0:d}'.format(trial)
+            print 'confidence: {0:d}'.format(confidence)
+            print 'MATCH HSV: ', fields['match']['color']
 
             if parameters['offlineMatch']:
                 # record data and save
@@ -258,8 +272,9 @@ try:
                 fields['rect']['color'] = h.random_color('hsv')
                 stage = 3
             else:
+                _results = pn.DataFrame(results)
                 # update plots in color space
-                matchRGB = cs.hsv2rgb(results.hue, results.saturation, results.value)
+                matchRGB = cs.hsv2rgb(_results.hue, _results.saturation, _results.value)
                 matchXYZ = cs.rgb2xyz(matchRGB)
 
                 # Convert to LMS and then MB space
@@ -269,25 +284,29 @@ try:
                 alpha = 0.9
                 matchMB =  matchMB * alpha + (1 - alpha) * backgroundMB
 
-                results['CIE_x'] = matchXYZ[:, 0]
-                results['CIE_y'] = matchXYZ[:, 1]
-                results['CIE_z'] = matchXYZ[:, 2]
+                _results['CIE_x'] = matchXYZ[:, 0]
+                _results['CIE_y'] = matchXYZ[:, 1]
+                _results['CIE_z'] = matchXYZ[:, 2]
 
-                results['match_l'] = matchMB[:, 0]
-                results['match_s'] = matchMB[:, 1]
+                _results['match_l'] = matchMB[:, 0]
+                _results['match_s'] = matchMB[:, 1]
 
-                plot.colorSpaces(results, background, parameters['ID'])
+                plot.colorSpaces(_results, background, parameters['ID'], plotMeans=False)
 
                 # randomize next match location
                 fields['match']['color'] = h.set_color_to_white('hsv')
                 stage = 4
+
+            # reset confidence to zero for next trial
+            confidence = 0
 
             trial += 1
             if trial == Ntrials:
                 keepGoing = False
 
         # Save the current setting and move on. Stage 4 == matching stage
-        elif (key in ['ABS_HAT', 'space'] or right_click) and stage == 3 and parameters['offlineMatch']:
+        elif (key in ['ABS_HAT', 'space'] or right_click) and (
+                stage == 3 and parameters['offlineMatch']):
             confidence = 0
             stage = 5
 
