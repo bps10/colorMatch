@@ -20,7 +20,7 @@ primariesXYZ = np.concatenate([primariesXYZ, [primariesXYZ[0, :]]])
 primariesMB = np.vstack([primariesMB, primariesMB[0, :]])
 
 
-def hueAndSaturation(data, name):
+def hueAndSaturation(data, savename):
     '''
     '''
     data.groupby(['L_intensity', 'M_intensity','new_MB_l']
@@ -39,7 +39,6 @@ def hueAndSaturation(data, name):
 
     ax1.set_xlabel('OZ specified L/(L+M)')
     ax1.set_ylabel('hue angle')
-
     ax1.set_ylim([0, 180])
 
     ax2 = fig.add_subplot(212)
@@ -50,10 +49,11 @@ def hueAndSaturation(data, name):
 
     ax2.set_xlabel('OZ specified L/(L+M)')
     ax2.set_ylabel('saturation')
-
     ax2.set_ylim([0, 1])
 
-    fig.savefig('Oz_Exp_hue_saturation_' + name + '.pdf')
+    date = datetime.datetime.today().strftime('%Y_%d_%m_%H%M')
+    fig.savefig(os.path.join('dat', savename, date + '_Oz_Exp_Hue_Saturation.pdf'))
+    plt.show(block=False)
 
 
 def colorSpaces(data, background, savename=None, plotMeans=True):
@@ -118,8 +118,9 @@ def colorSpaces(data, background, savename=None, plotMeans=True):
         ax1.plot(average_x, average_y, 'r.-')
         ax3.plot(average_l, average_s, 'r.-')
 
-    date = datetime.datetime.today().strftime('%Y_%d_%m')
-
-    fig.savefig(os.path.join('dat', savename, date + 'Oz_Exp_trials.svg'))
-    fig.savefig(os.path.join('dat', savename, date + 'Oz_Exp_trials.pdf'))
+    date = datetime.datetime.today().strftime('%Y_%d_%m_%H%M')
+    fig.savefig(os.path.join('dat', savename, date + '_Oz_Exp_trials.svg'))
+    fig.savefig(os.path.join('dat', savename, date + '_Oz_Exp_trials.pdf'))
     fig.savefig('Color_Space_Visualization_Oz.png')
+
+    plt.close()

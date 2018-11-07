@@ -1,8 +1,7 @@
 from __future__ import division
 import numpy as np
 import pandas as pn
-import os
-
+import os, zmq, time
 
 from psychopy import visual, core, event
 from psychopy.hardware import crs
@@ -13,9 +12,6 @@ import gui as g
 import logitech_gamepad as lt
 import colorSpace as cs
 import plotResults as plot
-
-import zmq
-import time
 
 
 #  Socket to talk to server
@@ -435,11 +431,16 @@ try:
 except Exception as e:
     print e
     h.saveData(parameters, results, fields)
+    plot.hueAndSaturation(results, parameters['ID'])
+
     mywin.close()
     core.quit()
 
 h.saveData(parameters, results, fields)
+results = pn.DataFrame(results)
+plot.hueAndSaturation(results, parameters['ID'])
 
 #cleanup
 mywin.close()
 core.quit()
+
