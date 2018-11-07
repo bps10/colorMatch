@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pn
 import os
 
+
 from psychopy import visual, core, event
 from psychopy.hardware import crs
 from psychopy import tools
@@ -12,6 +13,15 @@ import gui as g
 import logitech_gamepad as lt
 import colorSpace as cs
 import plotResults as plot
+
+import zmq
+import time
+
+#  Socket to talk to server
+context = zmq.Context()
+socket = context.socket(zmq.SUB)
+socket.connect("tcp://192.168.137.4:5556")
+socket.setsockopt_string(zmq.SUBSCRIBE, "1")
 
 
 thisdir = os.path.dirname(os.path.abspath(__file__))
@@ -34,6 +44,12 @@ parameters = g.parameters()
 
 # get key map
 keymap = h.key_map()
+
+#toggle whether ICANDI information is recorded
+record_ICANDI = True
+#Log of time-stamped events
+time_event_log = []
+log_file = "LOGFILE"
 
 # check if logitech is installed
 if lt.isGamePad():
@@ -176,13 +192,23 @@ right_click = False
 keepGoing = True
 try:
     while keepGoing:
+        #grab frame information from ICANDI
+        time_event_log.append(str(time.time())+" Starting loop")
+        if record_ICANDI:
+            frame_number = -1
+            while frame_number != 15:
+                string = socket.recv_string()
+                if string is None:
+                    break
+                time_event_log.append(str(time.time())+" "+string)
         # need to organize in a list so that match drawn on top of rect
+        time_event_log.append(str(time.time())+" About to draw")
         for field in field_list:
             h.drawField(fields, field, invGammaTable)
-
+        time_event_log.append(str(time.time())+" Finished drawField")
         # flip new screen
         mywin.flip()
-
+        time_event_log.append(str(time.time())+" Finished flip")
         # wait for key press
 
         #set default step_gain
@@ -333,6 +359,8 @@ try:
         elif key in ['q', 'escape', 'BTN_MODE']:
             keepGoing = False
 
+        time_event_log.append(str(time.time())+" about to enter mouse loop")
+
         # update fields based on new mouse pos
         if use_mouse and attribute == 'color' and active_field in ['rect', 'match']:
             temp = [0, 0]
@@ -397,9 +425,15 @@ try:
         fields['rect']['size'] = fields['AObackground']['size']
         fields['match']['size'][:2] = parameters['OzSize']
         fields['fixation']['size'] = np.array([0.05, 0.05, 0])
-
+        time_event_log.append(str(time.time())+" Done with mouse loop")
         # before waiting for the next key press, clear the buffer
         event.clearEvents()
+        time_event_log.append(str(time.time())+" Done clearing events")
+    with open(log_file, 'w+') as f:
+       f.write("\n".join(time_event_log))
+    time_event_log = [] 
+    time_event_log.append(str(time.time())+" Finished Writing to file")  
+
 except Exception as e:
     print e
     h.saveData(parameters, results, fields)
