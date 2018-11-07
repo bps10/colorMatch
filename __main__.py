@@ -17,12 +17,12 @@ import plotResults as plot
 import zmq
 import time
 
+
 #  Socket to talk to server
 context = zmq.Context()
 socket = context.socket(zmq.SUB)
 socket.connect("tcp://192.168.137.4:5556")
-socket.setsockopt_string(zmq.SUBSCRIBE, "1")
-
+socket.setsockopt_string(zmq.SUBSCRIBE, u"1")
 
 thisdir = os.path.dirname(os.path.abspath(__file__))
 
@@ -46,7 +46,7 @@ parameters = g.parameters()
 keymap = h.key_map()
 
 #toggle whether ICANDI information is recorded
-record_ICANDI = True
+record_ICANDI = parameters['yesICANDI']
 #Log of time-stamped events
 time_event_log = []
 log_file = "LOGFILE"
@@ -346,8 +346,6 @@ try:
 
         elif key != None and key == 'up' and stage == 5:
             confidence += 1
-            noteA.play()
-            noteC.play()
 
         elif key != None and key == 'down' and stage == 5:
             confidence -= 1
@@ -431,8 +429,8 @@ try:
         time_event_log.append(str(time.time())+" Done clearing events")
     with open(log_file, 'w+') as f:
        f.write("\n".join(time_event_log))
-    time_event_log = [] 
-    time_event_log.append(str(time.time())+" Finished Writing to file")  
+    time_event_log = []
+    time_event_log.append(str(time.time())+" Finished Writing to file")
 
 except Exception as e:
     print e

@@ -218,6 +218,8 @@ def getDefaultParameters():
               'screen': 0,
               'offlineMatch': False,
               'onlineMatch': True,
+              'noICANDI': True,
+              'yesICANDI': False,
               }
     return params
 

@@ -57,6 +57,10 @@ def setup_layout(params):
          sg.Radio('true', 'matchMode', key='onlineMatch', default=True),
          sg.Radio('false', 'matchMode', key='offlineMatch')],
 
+        [sg.Text('Sync with ICANDI?', size=(30, 1)),
+         sg.Radio('true', 'IDANCImode', key='yesICANDI', default=True),
+         sg.Radio('false', 'ICANDIMode', key='noICANDI')],
+
         [sg.Submit(), sg.Cancel()]
     ]
     return layout
@@ -65,7 +69,7 @@ def setup_layout(params):
 def updateParams(window, params):
     for p in ['age', 'ID', 'OzHeight', 'OzWidth', 'leftEye',
               'rightEye', 'isBitsSharp', 'noBitsSharp', 'screen',
-              'offlineMatch', 'onlineMatch']:
+              'offlineMatch', 'onlineMatch', 'yesICANDI', 'noICANDI']:
         window.FindElement(p).Update(params[p])
 
 def parameters():
