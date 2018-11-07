@@ -2,11 +2,10 @@ from __future__ import division
 import numpy as np
 import os, pickle, datetime
 
-from colormath.color_objects import LabColor, xyYColor, sRGBColor
-from colormath.color_conversions import convert_color
 import json
+import pandas as pn
 from psychopy import monitors
-from psychopy.tools import colorspacetools as ct
+from psychopy.tools import colorspacetools as cspace
 
 
 def gammaCorrect(invGammaTable, rgb):
@@ -15,7 +14,8 @@ def gammaCorrect(invGammaTable, rgb):
     corrected_rgb = invGammaTable[rgb, [0, 1, 2]]
     corrected_rgb = corrected_rgb * 2 - 1
     return corrected_rgb
-    
+
+
 def gammaInverse(monitorName, currentCalibName):
     mon = monitors.Monitor(monitorName)
     mon.setCurrent(currentCalibName)
@@ -34,8 +34,8 @@ def gammaInverse(monitorName, currentCalibName):
     invGammaTable[np.isnan(invGammaTable)] = 0
     invGammaTable /= invGammaTable.max(0)
     return invGammaTable
-    
-    
+
+
 def convertHSL2LMS_RGB_LAB_XY(color):
     from psychopy.tools import colorspacetools as cspace
     LMS2RGB = json.load(open('LightCrafter.json','r'))['gamma_29Oct2018']['lms_rgb']['__ndarray__']
@@ -48,7 +48,7 @@ def convertHSL2LMS_RGB_LAB_XY(color):
     lab = np.array(convert_color(rgb, LabColor).get_value_tuple())
     xy = np.array(convert_color(rgb, xyYColor).get_value_tuple())
     return lms, rgb, lab, xy
-    
+
 def random_color(colorSpace):
     if colorSpace == 'hsv':
         c = np.array([np.random.randint(0, 360),
@@ -57,20 +57,22 @@ def random_color(colorSpace):
     elif colorSpace == 'dkl':
         c = np.array([np.random.randint(-180, 180),
                       np.random.randint(-180, 180),
-                      np.random.random_sample(1) * 2 - 1]) 
+                      np.random.random_sample(1) * 2 - 1])
     elif colorSpace == 'rgb':
         c = np.asrray([np.random.random_sample(1) * 2 - 1,
                       np.random.random_sample(1) * 2 - 1,
-                      np.random.random_sample(1) * 2 - 1])     
+                      np.random.random_sample(1) * 2 - 1])
     return c
 
 def set_color_to_white(colorSpace):
+    '''
+    '''
     if colorSpace == 'hsv':
         c = np.array([0, 0, 0.5])
     elif colorSpace == 'rgb':
         c = np.array([0.1, 0.1, 0.1])
     return c
-    
+
 def check_color(color, colorSpace):
     ''' Make sure that color is within bounds of space.
     '''
@@ -93,7 +95,7 @@ def check_color(color, colorSpace):
         if color[2] < -1:
             color[2] = -1
             print 'Contrast cannot exceed -1: setting to -1'
-            
+
     elif colorSpace == 'hsv':
         # Make it circular
         color[0] = color[0] % 360
@@ -105,13 +107,13 @@ def check_color(color, colorSpace):
 
 def key_map():
 
-    keymap = {           
+    keymap = {
         'up': [0, 1],
         'down': [0, -1],
         'right': [1, 1],
         'left': [1, -1],
         'rshift': [2, -1],
-        'lshift': [2, -1],        
+        'lshift': [2, -1],
         'return': [2, 1],
 
         'BTN_NORTH': [0, 1],
@@ -124,7 +126,7 @@ def key_map():
 
     return keymap
 
-           
+
 def update_value(mapping, fields, active_field, attribute,
                  step_gain, step_sizes):
     '''
@@ -133,14 +135,14 @@ def update_value(mapping, fields, active_field, attribute,
     fields[active_field][attribute][mapping[0]] += (
         (step_sizes * mapping[1]) * step_gain)
     return fields
-                                                    
+
 
 def drawField(fields, field, invGammaTable):
     # convert hsv to rgb
     hsv = fields[field]['color']
     # double check colors
     hsv = check_color(hsv, 'hsv')
-    rgb = ct.hsv2rgb(hsv)
+    rgb = cspace.hsv2rgb(hsv)
     # gamma correct
     rgb = gammaCorrect(invGammaTable, rgb)
 
@@ -173,7 +175,7 @@ def getFields(parameters, colorSpace, blackColor, canvasSize):
                        'color': blackColor,
                        'size': canvasSize,
                        'position': np.array([0, 0., 0]),
-            },               
+            },
             'rect': {
                      'colorSpace': colorSpace,
                      'color': np.array([50, 0.5, 0.5]),
@@ -188,7 +190,7 @@ def getFields(parameters, colorSpace, blackColor, canvasSize):
                       'position': np.array([-1., 0., 0]),
             },
             'fixation': {
-                         'colorSpace': colorSpace,                 
+                         'colorSpace': colorSpace,
                          'color': np.array([90., 0, 0.9]),
                          'size': np.array([0.05, 0.05, 0]),
                          'position': np.array([0., 0., 0]),
@@ -198,8 +200,8 @@ def getFields(parameters, colorSpace, blackColor, canvasSize):
                              'color': np.array([90, 0.1, 0.4]),
                              'size': np.array([0.95, 0.95, 0]),
                              'position': np.array([1., 0., 0]),
-            },             
-        }    
+            },
+        }
     return fields
 
 
@@ -221,7 +223,8 @@ def getDefaultParameters():
 
 
 def saveData(parameters, results, fields):
-    
+    '''
+    '''
     # save
     basedir = getColorMatchDir()
     if parameters['offlineMatch']:
@@ -231,7 +234,7 @@ def saveData(parameters, results, fields):
     if not os.path.exists(savedir):
         os.makedirs(savedir)
     date = datetime.datetime.now().strftime("%Y-%m-%d_%H%M%S")
-    
+
     # save the results
     if len(results) > 0:
         resultsName = os.path.join(savedir, 'results_' + date + '.pkl')
@@ -239,17 +242,17 @@ def saveData(parameters, results, fields):
         pickle.dump(results, f)
         f.close()
     print results
-    
+
     # save the fields structure
     # delete fields['handles'] can't save those
     for field in fields:
         del fields[field]['handle']
-    
+
     fieldsName = os.path.join(savedir, 'fields_' + date + '.pkl')
     f = open(fieldsName, 'wb')
     pickle.dump(fields, f)
     f.close()
-    
+
     # save the subject specific parameters
     paramsName = os.path.join(savedir, 'parameters_' + date + '.pkl')
     # add the path to fields
@@ -257,8 +260,34 @@ def saveData(parameters, results, fields):
     f = open(paramsName, 'wb')
     pickle.dump(parameters, f)
     f.close()
-    
+
     # Lastly, update lastParameters.txt to reflect this as the most recent set
     f = open(os.path.join(basedir, 'dat', 'lastParameters.txt'), 'w')
     f.write(paramsName)
     f.close()
+
+
+def loadMBandLightCrafter():
+    '''
+    '''
+    thisdir = os.path.dirname(os.path.abspath(__file__))
+    # load MB spectrum locus.
+    mb = pn.read_csv(os.path.join(thisdir, 'mb2_1.csv'),
+                     names=['wavelength', 'l', 'm', 's'])
+    # load in measured spectrum of the light crafter
+    LC = pn.read_csv(os.path.join(thisdir, 'LightCrafter_spectra.csv'),
+                     names=['wavelength', 'R', 'G', 'B'])
+    # find the common wavelengths
+    LC_mb = pn.merge(mb, LC, on='wavelength')
+
+    # find the dot product between the LMS values and RGB spectra
+    lms = LC_mb[['l', 'm', 's']].values
+    rgb = LC_mb[['R', 'G', 'B']].values
+    primariesLMS = np.dot(lms.T, rgb).T
+
+    # normalize
+    primariesMB = np.zeros((3, 2))
+    primariesMB[:, 0] = primariesLMS[:, 0] / primariesLMS[:, :2].sum(1)
+    primariesMB[:, 1] = primariesLMS[:, 2] / primariesLMS[:, :2].sum(1)
+
+    return mb, primariesMB

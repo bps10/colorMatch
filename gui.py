@@ -15,7 +15,7 @@ try:
     f = open(fpath, "rb")
     savedParams = pickle.load(f)
     f.close()
-    
+
 except IOError:
     # get fname from directory input
     savedParams = h.getDefaultParameters()
@@ -35,7 +35,7 @@ def setup_layout(params):
          sg.ReadButton('Load')],
         [sg.Text('Age', size=(30, 1)),
          sg.InputText(params['age'], key='age')],
-        
+
         [sg.Text('Eye', size=(30, 1)),
          sg.Radio('left', 'eye', key='leftEye'),
          sg.Radio('right', 'eye', key='rightEye', default=True)],
@@ -45,7 +45,7 @@ def setup_layout(params):
          sg.InputText(params['OzHeight'], key='OzHeight')],
         [sg.Text('Oz width', size=(30, 1)),
          sg.InputText(params['OzWidth'], key='OzWidth')],
-        
+
         [sg.Text('Bits #', size=(30, 1)),
          sg.Radio('true', 'bitsSharp', key='isBitsSharp'),
          sg.Radio('false', 'bitsSharp', key='noBitsSharp', default=True)],
@@ -56,7 +56,7 @@ def setup_layout(params):
         [sg.Text('Online match mode', size=(30, 1)),
          sg.Radio('true', 'matchMode', key='onlineMatch', default=True),
          sg.Radio('false', 'matchMode', key='offlineMatch')],
-        
+
         [sg.Submit(), sg.Cancel()]
     ]
     return layout
@@ -67,20 +67,20 @@ def updateParams(window, params):
               'rightEye', 'isBitsSharp', 'noBitsSharp', 'screen',
               'offlineMatch', 'onlineMatch']:
         window.FindElement(p).Update(params[p])
-                    
+
 def parameters():
- 
+
     layout = setup_layout(savedParams)
     window = sg.Window('Matching parameters').Layout(layout)
     # need to run this to update radio buttons
     updateParams(window, savedParams)
-        
-    # You need to perform a ReadNonBlocking on your window every now and then or    
-    # else it won't refresh.      
-    #      
-    # your program's main loop      
-    while (True):      
-        # This is the code that reads and updates your window      
+
+    # You need to perform a ReadNonBlocking on your window every now and then or
+    # else it won't refresh.
+    #
+    # your program's main loop
+    while (True):
+        # This is the code that reads and updates your window
         event, values = window.ReadNonBlocking()
         if event == 'Submit':
             break
@@ -104,7 +104,7 @@ def parameters():
             values['lastFields'] = savedParams['lastFields']
 
         return values
-    
+
     else:
         print 'Program cancelled by user.'
         # program was cancelled

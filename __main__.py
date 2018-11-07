@@ -1,27 +1,35 @@
 from __future__ import division
 import numpy as np
+import pandas as pn
+import os
+
 from psychopy import visual, core, event
 from psychopy.hardware import crs
-from matplotlib import pyplot as plt
 from psychopy import tools
 
 import helper as h
 import gui as g
 import logitech_gamepad as lt
+import colorSpace as cs
+import plotResults as plot
+
+
+thisdir = os.path.dirname(os.path.abspath(__file__))
 
 #load trial parameters
-trial_params = np.genfromtxt('Oz_Exp_trials.csv', delimiter=',')[1:]
+trial_params = np.genfromtxt(os.path.join(thisdir, 'Oz_Exp_trials.csv'),
+                             delimiter=',')[1:]
 MB_history_match, AB_history_match, XY_history_match = [], [],[]
 MB_history_stim, AB_history_stim, XY_history_stim = [], [],[]
 
 Ntrials = len(trial_params)
+
 # set color space
 # user will operate in HSV, but we will convert to rgb before sending to device
 colorSpace = 'rgb'
 
 # call a parameters gui
 parameters = g.parameters()
-#parameters = {0: u'', 'isBitsSharp': False, 'offlineMatch': True, 'age': 30.0, 'onlineMatch': False, 'leftEye': False, 'OzWidth': '0.2', 'OzSize': np.array([0.45, 0.2 ]), 'noBitsSharp': True, 'rightEye': True, 'screen': 0, 'ID': 'test', 'OzHeight': '0.45'}
 
 # get key map
 keymap = h.key_map()
@@ -38,7 +46,7 @@ else:
     # if this is true then you can only adjust one of Hue/Saturation at a time,
     # i.e. the mouse is only allowed to move along one axis (either x or y) at
     # a time.
-    mouse_fixed_axes = False 
+    mouse_fixed_axes = False
 
 #create a window
 monitorName = 'LightCrafter'
@@ -62,9 +70,9 @@ invGammaTable = h.gammaInverse(monitorName, currentCalibName)
 if parameters['isBitsSharp']:
 
     # we need to be rendering to framebuffer (FBO)
-    mywin = visual.Window(windowSize, useFBO=True, 
+    mywin = visual.Window(windowSize, useFBO=True,
                           fullscr=fullScreen,
-                          monitor=monitorName, 
+                          monitor=monitorName,
                           units='deg',
                           screen=parameters['screen'],
                     gammaCorrect='hardware', winType='pygame')
@@ -78,8 +86,8 @@ if parameters['isBitsSharp']:
     # now, you can change modes using
     bits.mode = 'color++'
 else:
-    mywin = visual.Window(windowSize, monitor=monitorName, 
-                          fullscr=fullScreen, 
+    mywin = visual.Window(windowSize, monitor=monitorName,
+                          fullscr=fullScreen,
                           units="deg", screen=parameters['screen'])
 
 #create some stimuli
@@ -108,6 +116,7 @@ fields['AObackground']['handle'] = AObackground
 
 # explicitly set the AObackground color. In the future get this from parameters
 fields['AObackground']['color'] = np.array([210, 0.1, 0.3])
+fields['match']['color'] = h.set_color_to_white('hsv')
 
 field_list = ['canvas', 'fixation']
 step_sizes = {
@@ -115,7 +124,7 @@ step_sizes = {
     'size': np.array([0.015, 0.015, 0]),
     'position': np.array([0.015, 0.015, 0])
     }
-    
+
 # for controlling each component of the scene
 active_field = 'fixation'
 attribute = 'position'
@@ -123,22 +132,38 @@ attribute = 'position'
 stage = 0
 confidence = 0
 trial = 0
-results = {'colorSpace': colorSpace, 'match': {}, 'conf': {}}
+
+# --- set background values for plotting
+backgroundHSV = fields['rect']['color']
+backgroundRGB = cs.hsv2rgb(backgroundHSV[0], backgroundHSV[1], backgroundHSV[2])
+# now compute LMS values for background
+backgroundXYZ = cs.rgb2xyz(backgroundRGB)
+backgroundLMS = cs.rgb2lms(backgroundRGB)
+backgroundMB = cs.lms2mb(backgroundLMS)[0]
+background = pn.DataFrame(columns=['l', 's', 'CIE_x', 'CIE_y'])
+background.loc[0] = np.hstack([backgroundMB, backgroundXYZ[:2]])
+background
+
+# --- set up results
+results = pn.DataFrame(columns=['confidence', 'hue', 'saturation', 'value'])
 if parameters['offlineMatch']:
     results['reference'] = {}
+    results = {}
 
-#initialize mouse:
+# initialize mouse:
 if use_mouse:
-    def_mouse_x = -tools.monitorunittools.pix2deg(mywin.size[0] * 0.5, mywin.monitor) * 0.5
-    def_mouse_y = -tools.monitorunittools.pix2deg(mywin.size[1] * 0.5, mywin.monitor) * 0.5
-    mouse = event.Mouse(visible=False,newPos=[def_mouse_x,def_mouse_y],win=mywin)
+    def_mouse_x = -tools.monitorunittools.pix2deg(
+        mywin.size[0] * 0.5, mywin.monitor) * 0.5
+    def_mouse_y = -tools.monitorunittools.pix2deg(
+        mywin.size[1] * 0.5, mywin.monitor) * 0.5
+    mouse = event.Mouse(visible=False,
+                        newPos=[def_mouse_x,def_mouse_y], win=mywin)
     mouse.setPos([def_mouse_x, def_mouse_y])
     def_mouse_x2, def_mouse_y2 = mouse.getPos()
     mouse_x = def_mouse_x2
     mouse_y = def_mouse_y2
     mouse.setVisible(False)
 
-    
 left_down = False
 left_click = False
 right_down = False
@@ -151,15 +176,15 @@ try:
         # need to organize in a list so that match drawn on top of rect
         for field in field_list:
             h.drawField(fields, field, invGammaTable)
-            
+
         # flip new screen
         mywin.flip()
-            
+
         # wait for key press
-       
+
         #set default step_gain
         step_gain = 1
-        
+
         if inputDevice != 'logitech':
             allKeys = event.getKeys(modifiers=True, timeStamped=True)
             if use_mouse:
@@ -176,158 +201,136 @@ try:
                 else:
                     d_mouse_x = 0.0
                     d_mouse_y = 0.0
-    
+
                 pressed = mouse.getPressed()
-    
+
                 left_click = (pressed[0] == 1 and not left_down)
                 right_click = (pressed[2] == 1 and not right_down)
                 left_down = (pressed[0] == 1)
                 right_down = (pressed[2] == 1)
-        
+
             if allKeys != None and len(allKeys) > 0:
                 allKeys = allKeys[0]
                 key = allKeys[0]
                 modifier = allKeys[1]
-                #responseTime = allKeys[2]
-                #print 'Response time {0:0.3f}'.format(responseTime)
-            
+
                 if modifier['ctrl'] is True or modifier['alt'] is True:
                     step_gain = 5
-    
+
             else:
                 allKeys = None
                 key = None
                 modifier = None
-    
-    
+
         else:
             key, modifier = lt.getKeyPress()
             if modifier == True:
                 step_gain = 5
-    
+
         # process user input
-        if key in ['q', 'escape', 'BTN_MODE']:
-            keepGoing = False
-    
         # Save the current setting and move on. Stage 4 == matching stage
-        elif (key in ['ABS_HAT', 'space'] or right_click) and stage == 4:
+        if (key in ['ABS_HAT', 'space'] or right_click) and stage == 4:
             confidence = 0
             stage = 5
-    
+
         elif (key in ['ABS_HAT', 'space'] or right_click) and stage == 5:
-            results['conf'][trial] = confidence
+            hue = fields['match']['color'][0]
+            saturation = fields['match']['color'][1]
+            value = fields['match']['color'][2]
+            # add trial to the results structure
+            results.loc[trial] = [confidence, hue, saturation, value]
+
+            # print out some of the results
             print "confidence: " + str(confidence)
+            print "MATCH HSV: ", fields['match']['color']
+
+            # reset confidence to zero for next trial
             confidence = 0
-            print "FIELDS", fields['match']['color']
-            if parameters['offlineMatch']:
-                color_match = fields['rect']['color']
-            else:
-                color_match = fields['match']['color']
-            
-            LMS_color, RGB_color, LAB_color, XY_color = h.convertHSL2LMS_RGB_LAB_XY(color_match)
-            Oz_LMS = trial_params[trial][1:4]
-            MB_color = np.array([LMS_color[0], LMS_color[-1]])/np.sum(LMS_color[:2])
-            if trial>=1:
-                plt.close()
-            fig, (ax1, ax2, ax3) = plt.subplots(1, 3)
-            plt.tight_layout()
-            plt.grid(True)      
-            ax1.set_title("MB")
-            ax1.axis('square')
-            ax1.set_xlim(0,1)
-            ax1.set_ylim(0,1)
-            plt.grid(True)
-            ax2.set_title("Lab")
-            ax2.axis('square')
-            ax2.set_xlim(-86.185, 98.254)
-            ax2.set_ylim(-107.863, 94.482)
-            ax3.set_title("xy")
-            ax3.axis('square')
-            ax3.set_xlim(0,1)
-            ax3.set_ylim(0,1)
-            MB_history_match.append([MB_color[0], MB_color[1]])
-            ax1.scatter(np.array(MB_history_match)[:,0], np.array(MB_history_match)[:,1]) #MB space
-            AB_history_match.append([LAB_color[1], LAB_color[2]])
-            ax2.scatter(np.array(AB_history_match)[:,0], np.array(AB_history_match)[:,1])
-            XY_history_match.append([XY_color[0], XY_color[1]])
-            ax3.scatter(np.array(XY_history_match)[:,0], np.array(XY_history_match)[:,1])
-            print "FIELDS2", fields['rect']['color']
-            trial += 1
-            if trial == Ntrials:
-                keepGoing = False
-            
-            if parameters['offlineMatch']:
-                color_stim = fields['AObackground']['color']
-            else:
-                color_stim = fields['rect']['color']
-            LMS_color, RGB_color, LAB_color, XY_color = h.convertHSL2LMS_RGB_LAB_XY(color_stim) 
-            Oz_LMS = trial_params[trial][1:4]
-            MB_color = np.array([LMS_color[0], LMS_color[-1]])/np.sum(LMS_color[:2])
-            #fig, (ax1, ax2, ax3) = plt.subplots(3, 1)
-            MB_history_stim.append([MB_color[0], MB_color[1]])
-            ax1.scatter(np.array(MB_history_stim)[:,0], np.array(MB_history_stim)[:,1]) #MB space
-            AB_history_stim.append([LAB_color[1], LAB_color[2]])
-            ax2.scatter(np.array(AB_history_stim)[:,0], np.array(AB_history_stim)[:,1])
-            XY_history_stim.append([XY_color[0], XY_color[1]])
-            ax3.scatter(np.array(XY_history_stim)[:,0], np.array(XY_history_stim)[:,1])
-    
-            print("LMS space error", np.linalg.norm(Oz_LMS-LMS_color))
-            plt.savefig('Color_Space_Visualization_Oz.png')
+
             if parameters['offlineMatch']:
                 # record data and save
                 results['match'][trial] = fields['rect']['color']
                 results['reference'][trial] = fields['AObackground']['color']
                 print fields['rect']['color'], fields['AObackground']['color']
+
                 # randomize next ref and match color
                 fields['AObackground']['color'] = h.random_color('hsv')
                 fields['rect']['color'] = h.random_color('hsv')
                 stage = 3
             else:
                 # update plots in color space
-    
-    
-                # record data and save
-                results['match'][trial] = fields['match']['color']
+                matchRGB = cs.hsv2rgb(results.hue, results.saturation, results.value)
+                matchXYZ = cs.rgb2xyz(matchRGB)
+
+                # Convert to LMS and then MB space
+                matchLMS = cs.rgb2lms(matchRGB)
+                matchMB = cs.lms2mb(matchLMS)
+
+                alpha = 0.9
+                matchMB =  matchMB * alpha + (1 - alpha) * backgroundMB
+
+                results['CIE_x'] = matchXYZ[:, 0]
+                results['CIE_y'] = matchXYZ[:, 1]
+                results['CIE_z'] = matchXYZ[:, 2]
+
+                results['match_l'] = matchMB[:, 0]
+                results['match_s'] = matchMB[:, 1]
+
+                plot.colorSpaces(results, background, parameters['ID'])
+
                 # randomize next match location
                 fields['match']['color'] = h.set_color_to_white('hsv')
                 stage = 4
-    
+
+            trial += 1
+            if trial == Ntrials:
+                keepGoing = False
+
         # Save the current setting and move on. Stage 4 == matching stage
         elif (key in ['ABS_HAT', 'space'] or right_click) and stage == 3 and parameters['offlineMatch']:
             confidence = 0
             stage = 5
-    
-            
+
         # change which field is active
         elif (left_click or (key != None and (key[-1] == '1' or key == 'BTN_START'))) and (
                 stage < 4 and parameters['onlineMatch'] or
                 stage < 3 and parameters['offlineMatch']):
             stage += 1
-    
+
         elif ((key != None and (key[-1] == '2' or key == 'BTN_SELECT'))) and stage > 0:
             stage -= 1
-    
+
         elif key != None and key == 'up' and stage == 5:
             confidence += 1
-    
+
         elif key != None and key == 'down' and stage == 5:
             confidence -= 1
-    
+
         elif key in keymap:
-            fields = h.update_value(keymap[key], fields, active_field, attribute, step_gain, step_sizes)
-        
+            fields = h.update_value(keymap[key], fields, active_field,
+                                    attribute, step_gain, step_sizes)
+
+        elif key in ['q', 'escape', 'BTN_MODE']:
+            keepGoing = False
+
         # update fields based on new mouse pos
         if use_mouse and attribute == 'color' and active_field in ['rect', 'match']:
             temp = [0, 0]
             temp[0] = keymap['right'][0]
             temp[1] = keymap['right'][1]
-            temp[1] *= mouse_sensitivity*180.0*(tools.monitorunittools.deg2pix(d_mouse_x, mywin.monitor)) / mywin.size[0]
-            fields = h.update_value(temp, fields, active_field, attribute, step_gain, step_sizes)
+            temp[1] *= mouse_sensitivity * 180.0 * (
+                tools.monitorunittools.deg2pix(
+                    d_mouse_x, mywin.monitor)) / mywin.size[0]
+            fields = h.update_value(temp, fields, active_field,
+                                    attribute, step_gain, step_sizes)
             temp[0] = keymap['up'][0]
             temp[1] = keymap['up'][1]
-            temp[1] *= mouse_sensitivity*180.0*(tools.monitorunittools.deg2pix(d_mouse_y, mywin.monitor)) / mywin.size[1]
-            fields = h.update_value(temp, fields, active_field, attribute, step_gain, step_sizes)
-    
+            temp[1] *= mouse_sensitivity * 180.0 * (
+                tools.monitorunittools.deg2pix(
+                    d_mouse_y, mywin.monitor)) / mywin.size[1]
+            fields = h.update_value(temp, fields, active_field,
+                                    attribute, step_gain, step_sizes)
+
         # now update parameters based on key stroke
         if stage == 0:
             active_field = 'fixation'
@@ -336,11 +339,11 @@ try:
         elif stage == 1:
             active_field = 'AObackground'
             attribute = 'position'
-            field_list = ['canvas', 'AObackground', 'fixation']        
+            field_list = ['canvas', 'AObackground', 'fixation']
         elif stage == 2:
             active_field = 'AObackground'
             attribute = 'size'
-            field_list = ['canvas', 'AObackground', 'fixation']        
+            field_list = ['canvas', 'AObackground', 'fixation']
         elif stage == 3:
             active_field = 'rect'
             attribute = 'color'
@@ -349,48 +352,40 @@ try:
             active_field = 'match'
             attribute = 'color'
             field_list = ['canvas', 'rect', 'match', 'AObackground', 'fixation']
-    
-        elif stage == 5 and parameters['onlineMatch']: #stage 5 is where the subject gives an integer confidence score indicating how close the match was
+
+        # stage 5 is where the subject gives an integer
+        # confidence score indicating how close the match was
+        elif stage == 5 and parameters['onlineMatch']:
             active_field = 'match'
             attribute = 'color'
             field_list = ['canvas', 'rect', 'match', 'AObackground', 'fixation']
-    
+
         elif stage == 5 and not parameters['onlineMatch']:
             active_field = 'rect'
             attribute = 'color'
             field_list = ['canvas', 'rect', 'AObackground', 'fixation']
-    
+
         # check that color hasn't gone out of gamut
         for field in fields:
             fields[field]['color'] = h.check_color(
-                fields[field]['color'], colorSpace)    
-    
+                fields[field]['color'], colorSpace)
+
         # The position of rect and match are yoked to AO background
         relDist = fields['fixation']['position'] - fields['AObackground']['position']
-        fields['rect']['position'] = fields['fixation']['position'] + relDist        
+        fields['rect']['position'] = fields['fixation']['position'] + relDist
         fields['match']['position'] = fields['fixation']['position'] + relDist
-    
         fields['rect']['size'] = fields['AObackground']['size']
         fields['match']['size'][:2] = parameters['OzSize']
-    
         fields['fixation']['size'] = np.array([0.05, 0.05, 0])
-    
-        # print out the active parameters
-        """
-        print "active field " + active_field
-        for f in fields[active_field]:
-            if f not in ['handle', 'colorSpace']:
-                print fields[active_field][f]
-        """
-    
-    
+
         # before waiting for the next key press, clear the buffer
         event.clearEvents()
-except:
+except Exception as e:
+    print e
     h.saveData(parameters, results, fields)
     mywin.close()
     core.quit()
-    
+
 h.saveData(parameters, results, fields)
 
 #cleanup
