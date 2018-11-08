@@ -58,8 +58,8 @@ def setup_layout(params):
          sg.Radio('false', 'matchMode', key='offlineMatch')],
 
         [sg.Text('Sync with ICANDI?', size=(30, 1)),
-         sg.Radio('true', 'IDANCImode', key='yesICANDI', default=True),
-         sg.Radio('false', 'ICANDIMode', key='noICANDI')],
+         sg.Radio('true', 'IDANCImode', key='yesICANDI'),
+         sg.Radio('false', 'IDANCImode', key='noICANDI', default=True)],
 
         [sg.Submit(), sg.Cancel()]
     ]
