@@ -147,14 +147,19 @@ confidence = 0
 trial = 0
 
 # --- set background values for plotting
+Lab_lum = 10 # Assume that luminance is 10x lower than a reference D65?
 backgroundHSV = fields['rect']['color']
 backgroundRGB = cs.hsv2rgb(backgroundHSV[0], backgroundHSV[1], backgroundHSV[2])
 # now compute LMS values for background
 backgroundXYZ = cs.rgb2xyz(backgroundRGB)
 backgroundLMS = cs.rgb2lms(backgroundRGB)
 backgroundMB = cs.lms2mb(backgroundLMS)[0]
-background = pn.DataFrame(columns=['l', 's', 'CIE_x', 'CIE_y'])
-background.loc[0] = np.hstack([backgroundMB, backgroundXYZ[:2]])
+backgroundxyY = cs.xy2xyY(backgroundXYZ[:2], Lab_lum)
+_backgroundXYZ = cs.xyY2XYZ(backgroundxyY)[0]
+backgroundLab = cs.XYZ2Lab(_backgroundXYZ)[0]
+# now make background into a dataframe (needed for plotting later)
+background = pn.DataFrame(columns=['l', 's', 'CIE_x', 'CIE_y', 'a*', 'b*'])
+background.loc[0] = np.hstack([backgroundMB, backgroundXYZ[:2], backgroundLab[1:]])
 background
 
 # --- set up results
@@ -305,6 +310,15 @@ try:
                 alpha = 0.9
                 matchMB =  matchMB * alpha + (1 - alpha) * backgroundMB
 
+                # Convert to Lab space
+                _matchxyY = cs.xy2xyY(matchXYZ[:, :2], Lab_lum)
+                _matchXYZ = cs.xyY2XYZ(_matchxyY)
+                matchLab = cs.XYZ2Lab(_matchXYZ)
+
+                _results['L*'] = matchLab[:, 0]
+                _results['a*'] = matchLab[:, 1]
+                _results['b*'] = matchLab[:, 2]
+
                 _results['CIE_x'] = matchXYZ[:, 0]
                 _results['CIE_y'] = matchXYZ[:, 1]
                 _results['CIE_z'] = matchXYZ[:, 2]
@@ -312,7 +326,8 @@ try:
                 _results['match_l'] = matchMB[:, 0]
                 _results['match_s'] = matchMB[:, 1]
 
-                plot.colorSpaces(_results, background, parameters['ID'], plotMeans=False)
+                plot.colorSpaces(_results, background, parameters['ID'],
+                                 plotMeans=False, plotShow=False)
 
                 # randomize next match location
                 fields['match']['color'] = h.set_color_to_white('hsv')

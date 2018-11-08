@@ -225,8 +225,9 @@ def getDefaultParameters():
 
 
 def saveData(parameters, results, fields):
+    '''   
     '''
-    '''
+
     # save
     basedir = getColorMatchDir()
     if parameters['offlineMatch']:

@@ -52,17 +52,21 @@ def hueAndSaturation(data, savename):
     ax2.set_ylim([0, 1])
 
     date = datetime.datetime.today().strftime('%Y_%d_%m_%H%M')
-    fig.savefig(os.path.join('dat', savename, date + '_Oz_Exp_Hue_Saturation.pdf'))
+    directory = os.path.join('dat', savename)
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+    fig.savefig(os.path.join(directory, date + '_Oz_Exp_Hue_Saturation.pdf'))
     plt.show(block=False)
 
 
-def colorSpaces(data, background, savename=None, plotMeans=True):
+def colorSpaces(data, background, savename=None, plotMeans=True, plotShow=True):
     '''
     '''
     # plot
-    fig = plt.figure(figsize=(14, 4))
+    fig = plt.figure(figsize=(10, 10))
     fig.tight_layout()
-    ax1 = fig.add_subplot(131)
+    ax1 = fig.add_subplot(221)
+    ax1.set_aspect('equal')
 
     ax1.plot(XYZlocus[:, 0], XYZlocus[:, 1], 'k-')
     ax1.plot(primariesXYZ[:, 0], primariesXYZ[:, 1], 'k--')
@@ -74,53 +78,89 @@ def colorSpaces(data, background, savename=None, plotMeans=True):
     ax1.set_ylim([0, 0.85])
     ax1.set_xlabel('CIE x')
     ax1.set_ylabel('CIE y')
+    ax1.set_title('CIE xy')
 
-    ax2 = fig.add_subplot(132)
+    ax2 = fig.add_subplot(222)
+    ax2.set_aspect('equal')
+    ax2.plot(background['a*'], background['b*'], 'bs')
+    ax2.plot(data['a*'], data['b*'], 'k.')
 
-    ax2.plot(mb.l, mb.s, 'k-')
-    ax2.plot(primariesMB[:, 0], primariesMB[:, 1], 'k--')
-    ax2.plot(data.new_MB_l,
-             np.ones(len(data.new_MB_l)) * background.s.values, 'b.')
-    ax2.plot(background.l, background.s, 'ks')
-    ax2.plot([0, background.l], [0, background.s], 'g-')
-    ax2.plot([1, background.l], [0, background.s], 'r-')
+    ax2.set_xlim(-65, 40)
+    ax2.set_ylim(-40, 65)
+    ax2.set_xlabel('a*')
+    ax2.set_ylabel('b*')
+    ax2.set_title('CIE Lab')
 
-    ax2.plot(data.match_l, data.match_s, 'k+')
-
-    ax2.set_xlim([0.5, 1])
-    ax2.set_ylim([0, 0.15])
-    ax2.set_xlabel('L/(L+M)')
-    ax2.set_ylabel('S/(L+M)')
-
-    ax3 = fig.add_subplot(133)
+    ax3 = fig.add_subplot(223)
 
     ax3.plot(mb.l, mb.s, 'k-')
     ax3.plot(primariesMB[:, 0], primariesMB[:, 1], 'k--')
     ax3.plot(data.new_MB_l,
              np.ones(len(data.new_MB_l)) * background.s.values, 'b.')
-    ax3.plot(background.l, background.s, 'ks')
+    ax3.plot(background.l, background.s, 'bs')
+    ax3.plot([0, background.l], [0, background.s], 'g-')
+    ax3.plot([1, background.l], [0, background.s], 'r-')
 
     ax3.plot(data.match_l, data.match_s, 'k+')
 
-    ax3.set_xlim([0.6, 0.75])
-    ax3.set_ylim([0, 0.05])
+    ax3.set_xlim([0., 1])
+    ax3.set_ylim([0, 0.15])
     ax3.set_xlabel('L/(L+M)')
     ax3.set_ylabel('S/(L+M)')
+    ax3.set_title('MacLeod-Boynton')
+
+    ax4 = fig.add_subplot(224)
+
+    ax4.plot(mb.l, mb.s, 'k-')
+    ax4.plot(primariesMB[:, 0], primariesMB[:, 1], 'k--')
+    ax4.plot(data.new_MB_l,
+             np.ones(len(data.new_MB_l)) * background.s.values, 'b.')
+    ax4.plot(background.l, background.s, 'bs')
+
+    ax4.plot(data.match_l, data.match_s, 'k+')
+
+    ax4.set_xlim([0.6, 0.75])
+    ax4.set_ylim([0, 0.05])
+    ax4.set_xlabel('L/(L+M)')
+    ax4.set_ylabel('S/(L+M)')
+    ax4.set_title('MacLeod-Boynton (zoom)')
 
     if plotMeans:
+        sem = lambda x: np.std(x) / np.sqrt(len(x))
         meanData = data.groupby('new_MB_l')[
-            ['CIE_x', 'CIE_y', 'match_l', 'match_s']].agg(['mean', 'std'])
-        average_l = meanData['match_l']['mean'].values
-        average_s = meanData['match_s']['mean'].values
-        average_x = meanData['CIE_x']['mean'].values
-        average_y = meanData['CIE_y']['mean'].values
+            ['CIE_x', 'CIE_y', 'match_l', 'match_s', 'a*', 'b*']].agg(
+                [('mean', np.mean), ('sem', sem)])
 
-        ax1.plot(average_x, average_y, 'r.-')
-        ax3.plot(average_l, average_s, 'r.-')
+        average_l = meanData['match_l']['mean'].values
+        sem_l = meanData['match_l']['sem'].values
+        average_s = meanData['match_s']['mean'].values
+        sem_s = meanData['match_s']['sem'].values
+        average_x = meanData['CIE_x']['mean'].values
+        sem_x = meanData['CIE_x']['sem'].values
+        average_y = meanData['CIE_y']['mean'].values
+        sem_y = meanData['CIE_y']['sem'].values
+
+        average_a = meanData['a*']['mean'].values
+        sem_a = meanData['a*']['sem'].values
+        average_b = meanData['b*']['mean'].values
+        sem_b = meanData['b*']['sem'].values
+
+        ax1.errorbar(average_x, average_y, xerr=sem_x, yerr=sem_y, fmt='r.-')
+        ax2.errorbar(average_a, average_b, xerr=sem_a, yerr=sem_b, fmt='r.-')
+        ax4.errorbar(average_l, average_s, xerr=sem_l, yerr=sem_s, fmt='r.-')
+
+    ax1.set_frame_on(False)
+    ax2.set_frame_on(False)
+    ax3.set_frame_on(False)
+    ax4.set_frame_on(False)
 
     date = datetime.datetime.today().strftime('%Y_%d_%m_%H%M')
-    fig.savefig(os.path.join('dat', savename, date + '_Oz_Exp_trials.svg'))
-    fig.savefig(os.path.join('dat', savename, date + '_Oz_Exp_trials.pdf'))
+    directory = os.path.join('dat', savename)
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+    fig.savefig(os.path.join(directory, date + '_Oz_Exp_trials.svg'))
+    fig.savefig(os.path.join(directory, date + '_Oz_Exp_trials.pdf'))
     fig.savefig('Color_Space_Visualization_Oz.png')
 
-    plt.close()
+    if not plotShow:
+        plt.close()
