@@ -16,7 +16,6 @@ def normalize_rows(matrix):
         matrix /= matrix.sum()
     return matrix
 
-
 def getXYZ_LMS_RGB(plot_basis=False):
     '''
     '''
@@ -64,7 +63,6 @@ def getXYZ_LMS_RGB(plot_basis=False):
         plt.plot(wavelengths, RGB)
     return XYZ, LMS, RGB
 
-
 def genSystemMats(XYZ, LMS, RGB):
     '''
     '''
@@ -78,14 +76,12 @@ def genSystemMats(XYZ, LMS, RGB):
     LMS2XYZ = np.linalg.inv(np.dot(RGB2LMS, np.linalg.inv(RGB2XYZ)))
     return RGB2LMS, RGB2XYZ, LMS2XYZ
 
-
 def hsv2rgb(hue, saturation, value):
     '''
     '''
     hsv = np.array([hue, saturation, value]).T
     rgb = cspace.hsv2rgb(hsv)
     return (rgb + 1) / 2.0
-
 
 def rgb2xyz(rgb):
     '''
@@ -94,14 +90,12 @@ def rgb2xyz(rgb):
     xyz = normalize_rows(xyz.T)
     return xyz
 
-
 def lms2xyz(lms):
     '''
     '''
     xyz = np.dot(LMS2XYZ, lms.T)
     xyz = normalize_rows(xyz.T)
     return xyz
-
 
 def rgb2lms(rgb):
     '''
@@ -129,6 +123,56 @@ def lms2mb(lms):
     mb[:, 0] = lms[:, 0] / luminance
     mb[:, 1] = lms[:, 2] / luminance
     return mb
+
+def check2D(mat):
+    if mat.ndim == 1:
+       mat = np.reshape(mat, (1, len(mat)))
+    return mat
+
+def XYZ2Lab(xyz, xyz_white=None):
+    ''' Verified against Psychtoolbox function in matlab.
+    '''
+    if xyz_white is None:
+        # By default xyz_white is set to D65
+        xyz_white = np.array([95.047, 100, 108.883])
+
+    xyz = check2D(xyz)
+    X_Xn = xyz[:, 0] / xyz_white[0]
+    Y_Yn = xyz[:, 1] / xyz_white[1]
+    Z_Zn = xyz[:, 2] / xyz_white[2]
+
+    delta = 6 / 29
+    f = lambda t: t ** (1 / 3) if t > delta ** 3 else (t / 3 * (delta ** 2)) + 4 / 29
+
+    L = 116 * np.array([f(Y_Yn[i]) for i in range(len(Y_Yn))]) - 16
+
+    a = 500 * (np.array([f(X_Xn[i]) for i in range(len(X_Xn))]) -
+               np.array([f(Y_Yn[i]) for i in range(len(Y_Yn))]))
+
+    b = 200 * (np.array([f(Y_Yn[i]) for i in range(len(Y_Yn))]) -
+               np.array([f(Z_Zn[i]) for i in range(len(Z_Zn))]))
+
+    return np.vstack([L, a, b]).T
+
+def xyY2XYZ(xyY):
+    ''' XYZ = xyY2XYZ(xyY)
+    Compute tristimulus coordinates from chromaticity and luminance.
+
+    Taken from Psychtoolbox. Verified against output in matlab.
+    '''
+    xyY = check2D(xyY)
+    XYZ = np.zeros(xyY.shape)
+
+    z = 1 - xyY[:, 0] - xyY[:, 1]
+    XYZ[:, 0] = xyY[:, 2] * xyY[:, 0] / xyY[:, 1]
+    XYZ[:, 1] = xyY[:, 2]
+    XYZ[:, 2] = xyY[:, 2] * z / xyY[:, 1]
+
+    return XYZ
+
+def xy2xyY(xy, Y):
+    xy = check2D(xy)
+    return np.hstack([xy, np.ones((len(xy), 1)) * Y])
 
 
 XYZ, LMS, RGB = getXYZ_LMS_RGB()
