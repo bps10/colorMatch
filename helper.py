@@ -223,9 +223,14 @@ def getDefaultParameters():
               }
     return params
 
+def checkDir(directory):
+    '''
+    '''
+    if not os.path.exists(directory):
+        os.makedirs(directory)
 
 def saveData(parameters, results, fields):
-    '''   
+    '''
     '''
 
     # save
@@ -234,8 +239,7 @@ def saveData(parameters, results, fields):
         savedir = os.path.join(basedir, 'dat', 'offline', parameters['ID'])
     else:
         savedir = os.path.join(basedir, 'dat', parameters['ID'])
-    if not os.path.exists(savedir):
-        os.makedirs(savedir)
+    checkDir(savedir)
     date = datetime.datetime.now().strftime("%Y-%m-%d_%H%M%S")
 
     # save the results

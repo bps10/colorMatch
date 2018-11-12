@@ -20,17 +20,18 @@ primariesXYZ = np.concatenate([primariesXYZ, [primariesXYZ[0, :]]])
 primariesMB = np.vstack([primariesMB, primariesMB[0, :]])
 
 
-def hueAndSaturation(data, savename):
+def hueAndSaturation(data, savename, groupbyVar='new_MB_l'):
     '''
     '''
     data.groupby(['L_intensity', 'M_intensity','new_MB_l']
                 )['hue', 'saturation'].agg(['mean', 'std'])
 
     meanHueSat = data.groupby(
-        ['new_MB_l'])['hue', 'saturation'].agg(['mean', 'std'])
+        [groupbyVar])['hue', 'saturation'].agg(['mean', 'std'])
     meanHueSat
 
     fig = plt.figure(figsize=(4, 8))
+    fig.set_tight_layout(True)
     ax1 = fig.add_subplot(211)
 
     ax1.plot(data.new_MB_l, data.hue, 'k.')
@@ -40,6 +41,7 @@ def hueAndSaturation(data, savename):
     ax1.set_xlabel('OZ specified L/(L+M)')
     ax1.set_ylabel('hue angle')
     ax1.set_ylim([0, 180])
+    ax1.set_frame_on(False)
 
     ax2 = fig.add_subplot(212)
 
@@ -50,21 +52,51 @@ def hueAndSaturation(data, savename):
     ax2.set_xlabel('OZ specified L/(L+M)')
     ax2.set_ylabel('saturation')
     ax2.set_ylim([0, 1])
+    ax2.set_frame_on(False)
 
-    date = datetime.datetime.today().strftime('%Y_%d_%m_%H%M')
     directory = os.path.join('dat', savename)
-    if not os.path.exists(directory):
-        os.makedirs(directory)
-    fig.savefig(os.path.join(directory, date + '_Oz_Exp_Hue_Saturation.pdf'))
+    h.checkDir(directory)
+    fig.savefig(os.path.join(directory, savename + '_Oz_Exp_Hue_Saturation.pdf'))
+    fig.savefig(os.path.join(directory, savename + '_Oz_Exp_Hue_Saturation.png'))
     plt.show(block=False)
 
 
-def colorSpaces(data, background, savename=None, plotMeans=True, plotShow=True):
+def specifiedVsObserved(data, savename, comparison='match_l'):
+    '''
+    '''
+    sem = lambda x: np.std(x) / np.sqrt(len(x))
+    group = data.groupby('new_MB_l')[
+        ['match_l', 'match_s']].agg(
+            [('mean', np.mean), ('sem', sem)])
+
+    fig = plt.figure()
+    fig.set_tight_layout(False)
+    ax = fig.add_subplot(111)
+    ax.set_frame_on(False)
+
+    ax.set_aspect(8)
+
+    ax.errorbar(group.index, group[comparison]['mean'],
+                yerr=group[comparison]['sem'], fmt='k.-')
+
+    ax.set_xlabel('Oz specified ' + comparison[-1].upper() + '/(L+M)')
+    ax.set_ylabel('Projector matched ' + comparison[-1].upper() + '/(L+M)')
+
+    directory = os.path.join('dat', savename)
+    h.checkDir(directory)
+    fig.savefig(os.path.join(directory,
+                             comparison + '_DeliveredVSMeasured.png'))
+    fig.savefig(os.path.join(directory,
+                             comparison + '_DeliveredVSMeasured.pdf'))
+
+
+def colorSpaces(data, background, savename=None, plotMeans=True,
+                plotShow=True, groupbyVar='new_MB_l'):
     '''
     '''
     # plot
     fig = plt.figure(figsize=(10, 10))
-    fig.tight_layout()
+    fig.set_tight_layout(True)
     ax1 = fig.add_subplot(221)
     ax1.set_aspect('equal')
 
@@ -127,7 +159,7 @@ def colorSpaces(data, background, savename=None, plotMeans=True, plotShow=True):
 
     if plotMeans:
         sem = lambda x: np.std(x) / np.sqrt(len(x))
-        meanData = data.groupby('new_MB_l')[
+        meanData = data.groupby(groupbyVar)[
             ['CIE_x', 'CIE_y', 'match_l', 'match_s', 'a*', 'b*']].agg(
                 [('mean', np.mean), ('sem', sem)])
 
@@ -154,12 +186,10 @@ def colorSpaces(data, background, savename=None, plotMeans=True, plotShow=True):
     ax3.set_frame_on(False)
     ax4.set_frame_on(False)
 
-    date = datetime.datetime.today().strftime('%Y_%d_%m_%H%M')
     directory = os.path.join('dat', savename)
-    if not os.path.exists(directory):
-        os.makedirs(directory)
-    fig.savefig(os.path.join(directory, date + '_Oz_Exp_trials.svg'))
-    fig.savefig(os.path.join(directory, date + '_Oz_Exp_trials.pdf'))
+    h.checkDir(directory)
+    fig.savefig(os.path.join(directory, savename + '_Oz_Exp_trials.pdf'))
+    fig.savefig(os.path.join(directory, savename + '_Oz_Exp_trials.png'))
     fig.savefig('Color_Space_Visualization_Oz.png')
 
     if not plotShow:
