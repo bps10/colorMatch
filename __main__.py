@@ -116,7 +116,8 @@ match = visual.GratingStim(win=mywin, color=(0., 0.5, 0.1), size=2,
 fixation = visual.GratingStim(win=mywin, size=0.2, pos=[0.,0.], sf=0, rgb=-1)
 AObackground = visual.GratingStim(win=mywin, color=(0., 0.5, 0.5), size=5,
                                   colorSpace=colorSpace, pos=rect.pos * -1.0, sf=0)
-
+blue_rect = visual.GratingStim(win=mywin, color=(0, 0.5, 0.5), size=2,
+                          colorSpace=colorSpace, pos=[-4.,0.], sf=0)
 # get last set of fields if it exists
 fields = h.getFields(parameters, colorSpace, blackColor, canvasSize)
 
@@ -126,6 +127,7 @@ fields['rect']['handle'] = rect
 fields['match']['handle'] = match
 fields['fixation']['handle'] = fixation
 fields['AObackground']['handle'] = AObackground
+fields['blue_rect']['handle'] = blue_rect
 
 # explicitly set the AObackground color. In the future get this from parameters
 fields['AObackground']['color'] = np.array([210, 0.1, 0.3])
@@ -188,7 +190,7 @@ left_down = False
 left_click = False
 right_down = False
 right_click = False
-
+del_x, del_y = 0, 0
 #draw the stimuli and update the window
 keepGoing = True
 try:
@@ -196,19 +198,14 @@ try:
         #grab frame information from ICANDI
         time_event_log.append(str(time.clock())+" Starting loop")
         if record_ICANDI:
-            frame_number = -1
-            while frame_number != 15:
-                st = socket.recv_string().decode('ascii')
-                if len(st.split()) == 4:
-                    _,f,x,y = st.split()
-                    f = str(f)
-                else:
-                    f, x, y = st.split()
-                    f = str(f)[-2:]
-                f, x,y = int(f), int(x), int(y)
-                frame_number = f
-                time_event_log.append(str(time.clock())+" "+st)
-        # need to organize in a list so that match drawn on top of rect
+            update_contains_good_frame = False
+            while not update_contains_good_frame:
+                latest_string, updates = h.get_ICANDI_update(socket)
+                update_contains_good_frame = 15 in updates.keys()
+                if update_contains_good_frame:
+                    del_x, del_y = updates[15]
+                    fields['blue_rect']['position'][:2] = np.array([del_x, del_y]) * 0.025 + np.array([-4, 0])
+                time_event_log.append(str(time.clock())+" "+latest_string)        # need to organize in a list so that match drawn on top of rect
         time_event_log.append(str(time.clock())+" About to draw")
         for field in field_list:
             h.drawField(fields, field, invGammaTable)
@@ -398,35 +395,35 @@ try:
         if stage == 0:
             active_field = 'fixation'
             attribute = 'position'
-            field_list = ['canvas', 'fixation']
+            field_list = ['canvas', 'AObackground', 'blue_rect']
         elif stage == 1:
             active_field = 'AObackground'
             attribute = 'position'
-            field_list = ['canvas', 'AObackground', 'fixation']
+            field_list = ['canvas', 'AObackground', 'fixation','blue_rect']
         elif stage == 2:
             active_field = 'AObackground'
             attribute = 'size'
-            field_list = ['canvas', 'AObackground', 'fixation']
+            field_list = ['canvas', 'AObackground', 'fixation','blue_rect']
         elif stage == 3:
             active_field = 'rect'
             attribute = 'color'
-            field_list = ['canvas', 'rect', 'AObackground', 'fixation']
+            field_list = ['canvas', 'rect', 'AObackground', 'fixation', 'blue_rect']
         elif stage == 4 and parameters['onlineMatch']:
             active_field = 'match'
             attribute = 'color'
-            field_list = ['canvas', 'rect', 'match', 'AObackground', 'fixation']
+            field_list = ['canvas', 'rect', 'match', 'AObackground', 'fixation',  'blue_rect']
 
         # stage 5 is where the subject gives an integer
         # confidence score indicating how close the match was
         elif stage == 5 and parameters['onlineMatch']:
             active_field = 'match'
             attribute = 'color'
-            field_list = ['canvas', 'rect', 'match', 'AObackground', 'fixation']
+            field_list = ['canvas', 'rect', 'match', 'AObackground', 'fixation', 'blue_rect']
 
         elif stage == 5 and not parameters['onlineMatch']:
             active_field = 'rect'
             attribute = 'color'
-            field_list = ['canvas', 'rect', 'AObackground', 'fixation']
+            field_list = ['canvas', 'rect', 'AObackground', 'fixation', 'blue_rect']
 
         # check that color hasn't gone out of gamut
         for field in fields:
@@ -441,6 +438,7 @@ try:
         fields['match']['size'][:2] = parameters['OzSize']
         fields['fixation']['size'] = np.array([0.05, 0.05, 0])
         time_event_log.append(str(time.clock())+" Done with mouse loop")
+
         # before waiting for the next key press, clear the buffer
         event.clearEvents()
         time_event_log.append(str(time.clock())+" Done clearing events")

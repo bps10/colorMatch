@@ -1,10 +1,37 @@
 from __future__ import division
 import numpy as np
 import os, pickle, datetime, json
+import zmq
 
 import pandas as pn
 from psychopy import monitors
 from psychopy.tools import colorspacetools as cspace
+
+def parse_ICANDI_string(st):
+    if len(st.split()) == 4:
+        _,f,x,y = st.split()
+        f = str(f)
+        y = str(y)[:-2]
+    else:
+        f, x, y = st.split()
+        f = str(f)[-2:]
+        y = str(y)[:-2]
+    return int(f), int(x), int(y)
+    
+    
+def get_ICANDI_update(socket): #gets the next up-to-date string from ICANDI
+    updates = dict()
+    string = None
+    while True:
+        try:
+            while True:
+                st = socket.recv_string(flags=zmq.NOBLOCK)            
+                string = st.decode('ascii')
+                f,x,y = parse_ICANDI_string(st.decode('ascii'))
+                updates[f] = [x,y]
+        except Exception as e:
+            if string is not None:
+                return string, updates
 
 
 def gammaCorrect(invGammaTable, rgb):
@@ -33,21 +60,6 @@ def gammaInverse(monitorName, currentCalibName):
     invGammaTable[np.isnan(invGammaTable)] = 0
     invGammaTable /= invGammaTable.max(0)
     return invGammaTable
-
-
-def convertHSL2LMS_RGB_LAB_XY(color):
-    from psychopy.tools import colorspacetools as cspace
-    LMS2RGB = json.load(open(os.path.join('assets', 'LightCrafter.json'),
-                             'r'))['gamma_29Oct2018']['lms_rgb']['__ndarray__']
-    RGB2LMS = np.linalg.inv(LMS2RGB)
-    # need to figure out HSL to RGB and then RGB to LMS
-    rgb = cspace.hsv2rgb(color)
-    rgb = (rgb+1)/2.0
-    lms = np.dot(RGB2LMS, rgb)
-    rgb = sRGBColor(*rgb)
-    lab = np.array(convert_color(rgb, LabColor).get_value_tuple())
-    xy = np.array(convert_color(rgb, xyYColor).get_value_tuple())
-    return lms, rgb, lab, xy
 
 def random_color(colorSpace):
     if colorSpace == 'hsv':
@@ -182,6 +194,12 @@ def getFields(parameters, colorSpace, blackColor, canvasSize):
                      'size': np.array([0.95, 0.95, 0]),
                      'position': np.array([-1., 0., 0]),
             },
+            'blue_rect': {
+                     'colorSpace': colorSpace,
+                     'color': np.array([50, 0.5, 0.5]),
+                     'size': np.array([0.95, 0.95, 0]),
+                     'position': np.array([0., 0., 0]),
+            },
             'match': {
                       'colorSpace': colorSpace,
                       'color':  set_color_to_white('hsv'),
@@ -202,6 +220,13 @@ def getFields(parameters, colorSpace, blackColor, canvasSize):
                              'position': np.array([1., 0., 0]),
             },
         }
+    #TODO Utkarsh: Remove this section
+    #if 'blue_rect' not in fields:
+    fields['blue_rect'] ={'colorSpace': colorSpace,
+                     'color': np.array([50, 0.5, 0.5]),
+                     'size': np.array([0.95, 0.95, 0]),
+                     'position': np.array([0., 0., 0]),
+                    }
     return fields
 
 
