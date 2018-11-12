@@ -20,6 +20,8 @@ socket = context.socket(zmq.SUB)
 socket.connect("tcp://192.168.137.4:5556")
 socket.setsockopt_string(zmq.SUBSCRIBE, "".decode('ascii'))
 
+eye_track_gain = 0.025
+
 thisdir = os.path.dirname(os.path.abspath(__file__))
 
 #load trial parameters
@@ -103,7 +105,7 @@ else:
                           fullscr=fullScreen,
                           units="deg", screen=parameters['screen'])
 
-#create some stimuli
+# create some stimuli
 blackColor = np.array([0, 0, 0])
 canvasSize = np.array([30, 30, 0])
 
@@ -116,8 +118,8 @@ match = visual.GratingStim(win=mywin, color=(0., 0.5, 0.1), size=2,
 fixation = visual.GratingStim(win=mywin, size=0.2, pos=[0.,0.], sf=0, rgb=-1)
 AObackground = visual.GratingStim(win=mywin, color=(0., 0.5, 0.5), size=5,
                                   colorSpace=colorSpace, pos=rect.pos * -1.0, sf=0)
-blue_rect = visual.GratingStim(win=mywin, color=(0, 0.5, 0.5), size=2,
-                          colorSpace=colorSpace, pos=[-4.,0.], sf=0)
+tracked_rect = visual.GratingStim(win=mywin, color=(0, 0.5, 0.5), size=match.size,
+                               colorSpace=colorSpace, pos=AObackground.pos, sf=0)
 # get last set of fields if it exists
 fields = h.getFields(parameters, colorSpace, blackColor, canvasSize)
 
@@ -127,11 +129,12 @@ fields['rect']['handle'] = rect
 fields['match']['handle'] = match
 fields['fixation']['handle'] = fixation
 fields['AObackground']['handle'] = AObackground
-fields['blue_rect']['handle'] = blue_rect
+fields['tracked_rect']['handle'] = tracked_rect
 
 # explicitly set the AObackground color. In the future get this from parameters
 fields['AObackground']['color'] = np.array([210, 0.1, 0.3])
 fields['match']['color'] = h.set_color_to_white('hsv')
+fields['tracked_rect']['position'] = fields['AObackground']['position']
 
 field_list = ['canvas', 'fixation']
 step_sizes = {
@@ -204,9 +207,14 @@ try:
                 update_contains_good_frame = 15 in updates.keys()
                 if update_contains_good_frame:
                     del_x, del_y = updates[15]
-                    fields['blue_rect']['position'][:2] = np.array([del_x, del_y]) * 0.025 + np.array([-4, 0])
-                time_event_log.append(str(time.clock())+" "+latest_string)        # need to organize in a list so that match drawn on top of rect
+                    fields['tracked_rect']['position'][:2] = (
+                        np.array([del_x, del_y]) * eye_track_gain +
+                        fields['AObackground']['position'])
+                # need to organize in a list so that match drawn on top of rect
+                time_event_log.append(str(time.clock())+" "+latest_string)
         time_event_log.append(str(time.clock())+" About to draw")
+
+        # draw fields to buffer
         for field in field_list:
             h.drawField(fields, field, invGammaTable)
         time_event_log.append(str(time.clock())+" Finished drawField")
@@ -265,6 +273,12 @@ try:
         if (key in ['ABS_HAT', 'space'] or right_click) and stage == 4:
             confidence = 0
             stage = 5
+
+        # control the gain on the ICANDI x,y position coordinates
+        elif key == 'v':
+            eye_track_gain -= 0.0025
+        elif key == 't':
+            eye_track_gain += 0.0025
 
         elif (key in ['ABS_HAT', 'space'] or right_click) and stage == 5:
 
@@ -395,35 +409,54 @@ try:
         if stage == 0:
             active_field = 'fixation'
             attribute = 'position'
-            field_list = ['canvas', 'AObackground', 'blue_rect']
+            field_list = ['canvas', 'fixation']
+
         elif stage == 1:
             active_field = 'AObackground'
             attribute = 'position'
-            field_list = ['canvas', 'AObackground', 'fixation','blue_rect']
+            if record_ICANDI:
+                field_list = ['canvas', 'AObackground', 'tracked_rect', 'fixation']
+            else:
+                field_list = ['canvas', 'AObackground', 'fixation']
         elif stage == 2:
             active_field = 'AObackground'
             attribute = 'size'
-            field_list = ['canvas', 'AObackground', 'fixation','blue_rect']
+            if record_ICANDI:
+                field_list = ['canvas', 'AObackground', 'tracked_rect', 'fixation']
+            else:
+                field_list = ['canvas', 'AObackground', 'fixation']
         elif stage == 3:
             active_field = 'rect'
             attribute = 'color'
-            field_list = ['canvas', 'rect', 'AObackground', 'fixation', 'blue_rect']
+            if record_ICANDI:
+                field_list = ['canvas', 'rect', 'AObackground', 'tracked_rect', 'fixation']
+            else:
+                field_list = ['canvas', 'rect', 'AObackground', 'fixation']
         elif stage == 4 and parameters['onlineMatch']:
             active_field = 'match'
             attribute = 'color'
-            field_list = ['canvas', 'rect', 'match', 'AObackground', 'fixation',  'blue_rect']
+            if record_ICANDI:
+                field_list = ['canvas', 'rect', 'match', 'AObackground',
+                              'tracked_rect', 'fixation']
+            else:
+                field_list = ['canvas', 'rect', 'match', 'AObackground',
+                          'fixation']
 
         # stage 5 is where the subject gives an integer
         # confidence score indicating how close the match was
         elif stage == 5 and parameters['onlineMatch']:
             active_field = 'match'
             attribute = 'color'
-            field_list = ['canvas', 'rect', 'match', 'AObackground', 'fixation', 'blue_rect']
-
+            if record_ICANDI:
+                field_list = ['canvas', 'rect', 'match', 'AObackground',
+                              'tracked_rect', 'fixation']
+            else:
+                field_list = ['canvas', 'rect', 'match', 'AObackground',
+                              'fixation']
         elif stage == 5 and not parameters['onlineMatch']:
             active_field = 'rect'
             attribute = 'color'
-            field_list = ['canvas', 'rect', 'AObackground', 'fixation', 'blue_rect']
+            field_list = ['canvas', 'rect', 'AObackground', 'fixation']
 
         # check that color hasn't gone out of gamut
         for field in fields:
@@ -450,14 +483,14 @@ try:
 except Exception as e:
     print e
     h.saveData(parameters, results, fields)
-    plot.hueAndSaturation(results, parameters['ID'])
 
     mywin.close()
     core.quit()
 
-h.saveData(parameters, results, fields)
-results = pn.DataFrame(results)
-plot.hueAndSaturation(results, parameters['ID'])
+if results['new_MB_l'] != []:
+    h.saveData(parameters, results, fields)
+    results = pn.DataFrame(results)
+    plot.hueAndSaturation(results, parameters['ID'])
 
 #cleanup
 mywin.close()

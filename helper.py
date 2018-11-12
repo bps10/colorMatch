@@ -194,12 +194,6 @@ def getFields(parameters, colorSpace, blackColor, canvasSize):
                      'size': np.array([0.95, 0.95, 0]),
                      'position': np.array([-1., 0., 0]),
             },
-            'blue_rect': {
-                     'colorSpace': colorSpace,
-                     'color': np.array([50, 0.5, 0.5]),
-                     'size': np.array([0.95, 0.95, 0]),
-                     'position': np.array([0., 0., 0]),
-            },
             'match': {
                       'colorSpace': colorSpace,
                       'color':  set_color_to_white('hsv'),
@@ -219,12 +213,20 @@ def getFields(parameters, colorSpace, blackColor, canvasSize):
                              'size': np.array([0.95, 0.95, 0]),
                              'position': np.array([1., 0., 0]),
             },
-        }
-    #TODO Utkarsh: Remove this section
-    #if 'blue_rect' not in fields:
-    fields['blue_rect'] ={'colorSpace': colorSpace,
+            'tracked_rect': {
+                     'colorSpace': colorSpace,
                      'color': np.array([50, 0.5, 0.5]),
-                     'size': np.array([0.95, 0.95, 0]),
+                     'size': np.array([parameters['OzSize'][0],
+                                        parameters['OzSize'][1], 0]),
+                     'position': np.array([0., 0., 0]),
+            },
+        }
+
+    # if 'tracked_rect' not in fields:
+    fields['tracked_rect'] ={'colorSpace': colorSpace,
+                     'color': np.array([50, 0.5, 0.5]),
+                     'size': np.array([parameters['OzSize'][0],
+                                        parameters['OzSize'][1], 0]),
                      'position': np.array([0., 0., 0]),
                     }
     return fields
