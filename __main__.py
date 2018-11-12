@@ -18,7 +18,7 @@ import plotResults as plot
 context = zmq.Context()
 socket = context.socket(zmq.SUB)
 socket.connect("tcp://192.168.137.4:5556")
-socket.setsockopt_string(zmq.SUBSCRIBE, u"1")
+socket.setsockopt_string(zmq.SUBSCRIBE, "".decode('ascii'))
 
 thisdir = os.path.dirname(os.path.abspath(__file__))
 
@@ -194,22 +194,28 @@ keepGoing = True
 try:
     while keepGoing:
         #grab frame information from ICANDI
-        time_event_log.append(str(time.time())+" Starting loop")
+        time_event_log.append(str(time.clock())+" Starting loop")
         if record_ICANDI:
             frame_number = -1
             while frame_number != 15:
-                string = socket.recv_string()
-                if string is None:
-                    break
-                time_event_log.append(str(time.time())+" "+string)
+                st = socket.recv_string().decode('ascii')
+                if len(st.split()) == 4:
+                    _,f,x,y = st.split()
+                    f = str(f)
+                else:
+                    f, x, y = st.split()
+                    f = str(f)[-2:]
+                f, x,y = int(f), int(x), int(y)
+                frame_number = f
+                time_event_log.append(str(time.clock())+" "+st)
         # need to organize in a list so that match drawn on top of rect
-        time_event_log.append(str(time.time())+" About to draw")
+        time_event_log.append(str(time.clock())+" About to draw")
         for field in field_list:
             h.drawField(fields, field, invGammaTable)
-        time_event_log.append(str(time.time())+" Finished drawField")
+        time_event_log.append(str(time.clock())+" Finished drawField")
         # flip new screen
         mywin.flip()
-        time_event_log.append(str(time.time())+" Finished flip")
+        time_event_log.append(str(time.clock())+" Finished flip")
         # wait for key press
 
         #set default step_gain
@@ -368,7 +374,7 @@ try:
         elif key in ['q', 'escape', 'BTN_MODE']:
             keepGoing = False
 
-        time_event_log.append(str(time.time())+" about to enter mouse loop")
+        time_event_log.append(str(time.clock())+" about to enter mouse loop")
 
         # update fields based on new mouse pos
         if use_mouse and attribute == 'color' and active_field in ['rect', 'match']:
@@ -434,14 +440,14 @@ try:
         fields['rect']['size'] = fields['AObackground']['size']
         fields['match']['size'][:2] = parameters['OzSize']
         fields['fixation']['size'] = np.array([0.05, 0.05, 0])
-        time_event_log.append(str(time.time())+" Done with mouse loop")
+        time_event_log.append(str(time.clock())+" Done with mouse loop")
         # before waiting for the next key press, clear the buffer
         event.clearEvents()
-        time_event_log.append(str(time.time())+" Done clearing events")
+        time_event_log.append(str(time.clock())+" Done clearing events")
     with open(log_file, 'w+') as f:
        f.write("\n".join(time_event_log))
     time_event_log = []
-    time_event_log.append(str(time.time())+" Finished Writing to file")
+    time_event_log.append(str(time.clock())+" Finished Writing to file")
 
 except Exception as e:
     print e
