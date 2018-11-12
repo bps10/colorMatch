@@ -194,6 +194,9 @@ left_click = False
 right_down = False
 right_click = False
 del_x, del_y = 0, 0
+strip_positions = dict([(i, [0,0]) for i in range(1,33)]) # Latest positions of every strip
+tracked_strips = np.array([10, 20, 30]) # Which strips to use for updating projector.
+latest_strip_updated = 1
 #draw the stimuli and update the window
 keepGoing = True
 try:
@@ -201,17 +204,14 @@ try:
         #grab frame information from ICANDI
         time_event_log.append(str(time.clock())+" Starting loop")
         if record_ICANDI:
-            update_contains_good_frame = False
-            while not update_contains_good_frame:
-                latest_string, updates = h.get_ICANDI_update(socket)
-                update_contains_good_frame = 15 in updates.keys()
-                if update_contains_good_frame:
-                    del_x, del_y = updates[15]
-                    fields['tracked_rect']['position'][:2] = (
-                        np.array([del_x, del_y]) * eye_track_gain +
-                        fields['AObackground']['position'])
-                # need to organize in a list so that match drawn on top of rect
-                time_event_log.append(str(time.clock())+" "+latest_string)
+            latest_string, latest_strip_updated = h.get_ICANDI_update(socket, strip_positions)
+            projector_strip = tracked_strips[int((tracked_strips <= latest_strip_updated).sum())-1] #Find closest tracked strip
+            del_x, del_y = strip_positions[projector_strip]
+            fields['tracked_rect']['position'][:2] = (
+                np.array([del_x, del_y]) * eye_track_gain +
+                fields['AObackground']['position'])
+            # need to organize in a list so that match drawn on top of rect
+            time_event_log.append(str(time.clock())+" "+latest_string)
         time_event_log.append(str(time.clock())+" About to draw")
 
         # draw fields to buffer
