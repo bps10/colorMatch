@@ -19,19 +19,18 @@ def parse_ICANDI_string(st):
     return int(f), int(x), int(y)
     
     
-def get_ICANDI_update(socket): #gets the next up-to-date string from ICANDI
-    updates = dict()
+def get_ICANDI_update(socket, strip_positions): #gets the next up-to-date string from ICANDI
     string = None
-    while True:
-        try:
-            while True:
+    while True: #Keep getting updates until exit condition is satisfied.
+        try: #once the packet queue runs out, this will throw an error
+            while True: # get all the packets in queue, decode them, and put results in a dictionary.
                 st = socket.recv_string(flags=zmq.NOBLOCK)            
                 string = st.decode('ascii')
                 f,x,y = parse_ICANDI_string(st.decode('ascii'))
-                updates[f] = [x,y]
+                strip_positions[f] = [x,y]
         except Exception as e:
-            if string is not None:
-                return string, updates
+            if string is not None: #Exit condition: No more packets in queue and there are been at least one packet received so far.
+                return string,f
 
 
 def gammaCorrect(invGammaTable, rgb):
