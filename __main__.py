@@ -21,6 +21,7 @@ socket.connect("tcp://192.168.137.4:5556")
 socket.setsockopt_string(zmq.SUBSCRIBE, "".decode('ascii'))
 
 eye_track_gain = 0.001
+offset_x, offset_y  = 0,0
 
 thisdir = os.path.dirname(os.path.abspath(__file__))
 
@@ -205,36 +206,19 @@ try:
         #grab frame information from ICANDI
         time_event_log.append(str(time.clock())+" Starting loop")
         if record_ICANDI:
-            update_contains_good_frame = False
-            while not update_contains_good_frame:
-                latest_string, updates = h.get_ICANDI_update(socket)
-                update_contains_good_frame = 15 in updates.keys()
-                if update_contains_good_frame:
-                    if first_frame:
-                        x0, y0 = updates[15]
-                        first_frame = False
-                    _x, _y = updates[15]
-                    del_x = x0 + _x
-                    del_y = y0 + _y
-                    fields['tracked_rect']['position'][:2] = (
-                        np.array([del_x, del_y]) * eye_track_gain +
-                        fields['AObackground']['position'][:2])
-                    #print fields['tracked_rect']['position'][:2]
-                    #print fields['AObackground']['position'][:2]
-                    #print del_x, del_y
-                    #print ''
-                # need to organize in a list so that match drawn on top of rect
-                time_event_log.append(str(time.clock())+" "+latest_string)
-##            latest_string, latest_strip_updated = h.get_ICANDI_update(socket, strip_positions)
-##            projector_strip = tracked_strips[int((tracked_strips <= latest_strip_updated).sum())-1] #Find closest tracked strip
-##            del_x, del_y = strip_positions[projector_strip]
-##            fields['tracked_rect']['position'][:2] = (
-##                np.array([del_x, del_y]) * eye_track_gain +
-##                fields['AObackground']['position'])
-##            # need to organize in a list so that match drawn on top of rect
-##            time_event_log.append(str(time.clock())+" "+latest_string)
+            latest_string, latest_strip_updated = h.get_ICANDI_update(socket, strip_positions)
+            if first_frame:
+                x0, y0 = strip_positions[15]
+                first_frame = False
+            projector_strip = tracked_strips[int((tracked_strips <= latest_strip_updated).sum())-1] #Find closest tracked strip
+            _x, _y = strip_positions[projector_strip]
+            del_x, del_y = x0+_x, y0+_y
+            fields['tracked_rect']['position'][:2] = (
+                np.array([del_x, del_y]) * eye_track_gain +
+                fields['AObackground']['position'][:2]) + np.array([offset_x, offset_y])
+            # need to organize in a list so that match drawn on top of rect
+            time_event_log.append(str(time.clock())+" "+latest_string)
         time_event_log.append(str(time.clock())+" About to draw")
-
         # draw fields to buffer
         for field in field_list:
             h.drawField(fields, field, invGammaTable)
@@ -246,7 +230,6 @@ try:
 
         #set default step_gain
         step_gain = 1
-
         if inputDevice != 'logitech':
             allKeys = event.getKeys(modifiers=True, timeStamped=True)
             if use_mouse:
@@ -303,7 +286,28 @@ try:
         elif key == 't':
             eye_track_gain += 0.00005
             print eye_track_gain
+
+        elif key == 'c':
+            if track_size_ratio > 0.5:
+                track_size_ratio -= 0.5
+            print track_size_ratio
+        elif key == 'r':
+            eye_track_gain += 0.5
+            print track_size_ratio
             
+        elif key == 'h':
+            offset_x -= 0.05
+            print (offset_x, offset_y)
+        elif key == 'j':
+            offset_y -= 0.05
+            print (offset_x, offset_y)
+        elif key == 'k':
+            offset_y += 0.05
+            print (offset_x, offset_y)
+        elif key == 'l':
+            offset_x += 0.05
+            print (offset_x, offset_y)
+
         elif (key in ['ABS_HAT', 'space'] or right_click) and stage == 5:
 
             if parameters['offlineMatch']:
