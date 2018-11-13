@@ -20,7 +20,7 @@ socket = context.socket(zmq.SUB)
 socket.connect("tcp://192.168.137.4:5556")
 socket.setsockopt_string(zmq.SUBSCRIBE, "".decode('ascii'))
 
-eye_track_gain = 0.025
+eye_track_gain = 0.001
 
 thisdir = os.path.dirname(os.path.abspath(__file__))
 
@@ -118,7 +118,7 @@ match = visual.GratingStim(win=mywin, color=(0., 0.5, 0.1), size=2,
 fixation = visual.GratingStim(win=mywin, size=0.2, pos=[0.,0.], sf=0, rgb=-1)
 AObackground = visual.GratingStim(win=mywin, color=(0., 0.5, 0.5), size=5,
                                   colorSpace=colorSpace, pos=rect.pos * -1.0, sf=0)
-tracked_rect = visual.GratingStim(win=mywin, color=(0, 0.5, 0.5), size=match.size,
+tracked_rect = visual.GratingStim(win=mywin, color=(50, 1, 0.5), size=match.size,
                                colorSpace=colorSpace, pos=AObackground.pos, sf=0)
 # get last set of fields if it exists
 fields = h.getFields(parameters, colorSpace, blackColor, canvasSize)
@@ -134,7 +134,7 @@ fields['tracked_rect']['handle'] = tracked_rect
 # explicitly set the AObackground color. In the future get this from parameters
 fields['AObackground']['color'] = np.array([210, 0.1, 0.3])
 fields['match']['color'] = h.set_color_to_white('hsv')
-fields['tracked_rect']['position'] = fields['AObackground']['position']
+#fields['tracked_rect']['position'] = fields['AObackground']['position']
 
 field_list = ['canvas', 'fixation']
 step_sizes = {
@@ -196,6 +196,7 @@ right_click = False
 del_x, del_y = 0, 0
 #draw the stimuli and update the window
 keepGoing = True
+first_frame = True
 try:
     while keepGoing:
         #grab frame information from ICANDI
@@ -206,10 +207,19 @@ try:
                 latest_string, updates = h.get_ICANDI_update(socket)
                 update_contains_good_frame = 15 in updates.keys()
                 if update_contains_good_frame:
-                    del_x, del_y = updates[15]
+                    if first_frame:
+                        x0, y0 = updates[15]
+                        first_frame = False
+                    _x, _y = updates[15]
+                    del_x = x0 + _x
+                    del_y = y0 + _y
                     fields['tracked_rect']['position'][:2] = (
                         np.array([del_x, del_y]) * eye_track_gain +
-                        fields['AObackground']['position'])
+                        fields['AObackground']['position'][:2])
+                    #print fields['tracked_rect']['position'][:2]
+                    #print fields['AObackground']['position'][:2]
+                    #print del_x, del_y
+                    #print ''
                 # need to organize in a list so that match drawn on top of rect
                 time_event_log.append(str(time.clock())+" "+latest_string)
         time_event_log.append(str(time.clock())+" About to draw")
@@ -276,10 +286,13 @@ try:
 
         # control the gain on the ICANDI x,y position coordinates
         elif key == 'v':
-            eye_track_gain -= 0.0025
+            if eye_track_gain > 0.00005:
+                eye_track_gain -= 0.00005
+            print eye_track_gain
         elif key == 't':
-            eye_track_gain += 0.0025
-
+            eye_track_gain += 0.00005
+            print eye_track_gain
+            
         elif (key in ['ABS_HAT', 'space'] or right_click) and stage == 5:
 
             if parameters['offlineMatch']:
@@ -364,7 +377,8 @@ try:
             stage = 5
 
         # change which field is active
-        elif (left_click or (key != None and (key[-1] == '1' or key == 'BTN_START'))) and (
+        elif (left_click or (key != None and
+                             (key[-1] == '1' or key == 'BTN_START'))) and (
                 stage < 4 and parameters['onlineMatch'] or
                 stage < 3 and parameters['offlineMatch']):
             stage += 1
@@ -429,7 +443,8 @@ try:
             active_field = 'rect'
             attribute = 'color'
             if record_ICANDI:
-                field_list = ['canvas', 'rect', 'AObackground', 'tracked_rect', 'fixation']
+                field_list = ['canvas', 'rect', 'AObackground', 'tracked_rect',
+                              'fixation']
             else:
                 field_list = ['canvas', 'rect', 'AObackground', 'fixation']
         elif stage == 4 and parameters['onlineMatch']:
@@ -488,6 +503,7 @@ except Exception as e:
     core.quit()
 
 if results['new_MB_l'] != []:
+    print 'Saving'
     h.saveData(parameters, results, fields)
     results = pn.DataFrame(results)
     plot.hueAndSaturation(results, parameters['ID'])

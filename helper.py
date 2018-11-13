@@ -215,16 +215,16 @@ def getFields(parameters, colorSpace, blackColor, canvasSize):
             },
             'tracked_rect': {
                      'colorSpace': colorSpace,
-                     'color': np.array([50, 0.5, 0.5]),
+                     'color': np.array([50, 1, 0.5]),
                      'size': np.array([parameters['OzSize'][0],
                                         parameters['OzSize'][1], 0]),
                      'position': np.array([0., 0., 0]),
             },
         }
 
-    # if 'tracked_rect' not in fields:
-    fields['tracked_rect'] ={'colorSpace': colorSpace,
-                     'color': np.array([50, 0.5, 0.5]),
+    if 'tracked_rect' not in fields:
+        fields['tracked_rect'] ={'colorSpace': colorSpace,
+                     'color': np.array([50, 1, 0.5]),
                      'size': np.array([parameters['OzSize'][0],
                                         parameters['OzSize'][1], 0]),
                      'position': np.array([0., 0., 0]),
@@ -280,7 +280,11 @@ def saveData(parameters, results, fields):
     # save the fields structure
     # delete fields['handles'] can't save those
     for field in fields:
-        del fields[field]['handle']
+        try:
+            del fields[field]['handle']
+        except Exception as e:
+            print e
+            print field
 
     fieldsName = os.path.join(savedir, 'fields_' + date + '.pkl')
     f = open(fieldsName, 'wb')
