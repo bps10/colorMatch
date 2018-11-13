@@ -298,7 +298,7 @@ try:
             fields['tracked_rect']['size'] = fields['match']['size']*track_size_ratio
             print track_size_ratio
         elif key == 'r':
-            eye_track_gain += 0.05
+            track_size_ratio += 0.05
             fields['tracked_rect']['size'] = fields['match']['size']*track_size_ratio
             print track_size_ratio
             
