@@ -20,8 +20,9 @@ socket = context.socket(zmq.SUB)
 socket.connect("tcp://192.168.137.4:5556")
 socket.setsockopt_string(zmq.SUBSCRIBE, "".decode('ascii'))
 
-eye_track_gain = 0.001
+eye_track_gain = 1
 offset_x, offset_y  = 0,0
+track_size_ratio = 1.0
 
 thisdir = os.path.dirname(os.path.abspath(__file__))
 
@@ -124,6 +125,7 @@ tracked_rect = visual.GratingStim(win=mywin, color=(50, 1, 0.5), size=match.size
 # get last set of fields if it exists
 fields = h.getFields(parameters, colorSpace, blackColor, canvasSize)
 
+
 # add handles to stim created above
 fields['canvas']['handle'] = canvas
 fields['rect']['handle'] = rect
@@ -135,7 +137,9 @@ fields['tracked_rect']['handle'] = tracked_rect
 # explicitly set the AObackground color. In the future get this from parameters
 fields['AObackground']['color'] = np.array([210, 0.1, 0.3])
 fields['match']['color'] = h.set_color_to_white('hsv')
-#fields['tracked_rect']['position'] = fields['AObackground']['position']
+# fields['tracked_rect']['position'] = fields['AObackground']['position']
+fields['tracked_rect']['size'] = fields['match']['size']
+
 
 field_list = ['canvas', 'fixation']
 step_sizes = {
@@ -151,6 +155,7 @@ attribute = 'position'
 stage = 0
 confidence = 0
 trial = 0
+
 
 # --- set background values for plotting
 Lab_lum = 10 # Assume that luminance is 10x lower than a reference D65?
@@ -214,7 +219,7 @@ try:
             _x, _y = strip_positions[projector_strip]
             del_x, del_y = x0+_x, y0+_y
             fields['tracked_rect']['position'][:2] = (
-                np.array([del_x, del_y]) * eye_track_gain +
+                np.array([del_x, del_y]) *  fields['tracked_rect']['size'][0]/256.0  * eye_track_gain +
                 fields['AObackground']['position'][:2]) + np.array([offset_x, offset_y])
             # need to organize in a list so that match drawn on top of rect
             time_event_log.append(str(time.clock())+" "+latest_string)
@@ -288,11 +293,13 @@ try:
             print eye_track_gain
 
         elif key == 'c':
-            if track_size_ratio > 0.5:
-                track_size_ratio -= 0.5
+            if track_size_ratio > 0.01:
+                track_size_ratio -= 0.05
+            fields['tracked_rect']['size'] = fields['match']['size']*track_size_ratio
             print track_size_ratio
         elif key == 'r':
-            eye_track_gain += 0.5
+            eye_track_gain += 0.05
+            fields['tracked_rect']['size'] = fields['match']['size']*track_size_ratio
             print track_size_ratio
             
         elif key == 'h':
