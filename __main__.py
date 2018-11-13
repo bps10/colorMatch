@@ -201,7 +201,7 @@ right_down = False
 right_click = False
 del_x, del_y = 0, 0
 strip_positions = dict([(i, [0,0]) for i in range(1,33)]) # Latest positions of every strip
-tracked_strips = np.array([10, 20, 30]) # Which strips to use for updating projector.
+tracked_strips = np.array(range(10, 26)) # Which strips to use for updating projector.
 latest_strip_updated = 1
 #draw the stimuli and update the window
 keepGoing = True
