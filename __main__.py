@@ -6,13 +6,14 @@ import os, zmq, time
 from psychopy import visual, core, event
 from psychopy.hardware import crs
 from psychopy import tools
+from psychopy.tools import colorspacetools as cspace
 
 import helper as h
 import gui as g
 import logitech_gamepad as lt
 import colorSpace as cs
 import plotResults as plot
-
+import processUserInput as ui
 
 #  Socket to talk to server
 context = zmq.Context()
@@ -23,6 +24,8 @@ socket.setsockopt_string(zmq.SUBSCRIBE, "".decode('ascii'))
 eye_track_gain = 1
 offset_x, offset_y  = 0.01,0
 track_size_ratio = 1.05
+tracked_on_time = -1.0 #clock time for when the tracked rectangle must be "on"
+tracked_off_time = -1.0 #clock time for when the tracked rectangle must be "off"
 
 thisdir = os.path.dirname(os.path.abspath(__file__))
 
@@ -43,7 +46,7 @@ colorSpace = 'rgb'
 parameters = g.parameters()
 
 # get key map
-keymap = h.key_map()
+keymap = ui.key_map()
 
 #toggle whether ICANDI information is recorded
 record_ICANDI = parameters['yesICANDI']
@@ -82,7 +85,7 @@ else:
     windowSize = [window_x, window_y]
     fullScreen = False
 
-invGammaTable = h.gammaInverse(monitorName, currentCalibName)
+invGammaTable = cs.gammaInverse(monitorName, currentCalibName)
 
 if parameters['isBitsSharp']:
 
@@ -137,9 +140,11 @@ fields['tracked_rect']['handle'] = tracked_rect
 # explicitly set the AObackground color. In the future get this from parameters
 fields['AObackground']['color'] = np.array([210, 0.1, 0.3])
 fields['match']['color'] = h.set_color_to_white('hsv')
-# fields['tracked_rect']['position'] = fields['AObackground']['position']
-#fields['tracked_rect']['size'] = fields['match']['size']
-fields['tracked_rect']['color'] = np.array([0, 0.9, 0.9])
+fields['match']['size'] = parameters['OzSize']
+#
+fields['tracked_rect']['position'] = np.copy(fields['AObackground']['position'])
+fields['tracked_rect']['color'] = cspace.hsv2rgb(fields['AObackground']['color'])
+fields['tracked_rect']['size'] = parameters['OzSize']
 
 field_list = ['canvas', 'fixation']
 step_sizes = {
@@ -159,19 +164,7 @@ trial = 0
 
 # --- set background values for plotting
 Lab_lum = 10 # Assume that luminance is 10x lower than a reference D65?
-backgroundHSV = fields['rect']['color']
-backgroundRGB = cs.hsv2rgb(backgroundHSV[0], backgroundHSV[1], backgroundHSV[2])
-# now compute LMS values for background
-backgroundXYZ = cs.rgb2xyz(backgroundRGB)
-backgroundLMS = cs.rgb2lms(backgroundRGB)
-backgroundMB = cs.lms2mb(backgroundLMS)[0]
-backgroundxyY = cs.xy2xyY(backgroundXYZ[:2], Lab_lum)
-_backgroundXYZ = cs.xyY2XYZ(backgroundxyY)[0]
-backgroundLab = cs.XYZ2Lab(_backgroundXYZ)[0]
-# now make background into a dataframe (needed for plotting later)
-background = pn.DataFrame(columns=['l', 's', 'CIE_x', 'CIE_y', 'a*', 'b*'])
-background.loc[0] = np.hstack([backgroundMB, backgroundXYZ[:2], backgroundLab[1:]])
-background
+background = h.getBackground(fields, Lab_lum)
 
 # --- set up results
 results = {'confidence': [], 'hue': [], 'saturation': [], 'value': [],
@@ -202,31 +195,49 @@ right_click = False
 del_x, del_y = 0, 0
 strip_positions = dict([(i, [0,0]) for i in range(1,33)]) # Latest positions of every strip
 tracked_strips = np.array(range(2, 31)) # Which strips to use for updating projector.
+default_tracked_color = fields['tracked_rect']['color']
 latest_strip_updated = 1
-#draw the stimuli and update the window
+# draw the stimuli and update the window
 keepGoing = True
 first_frame = True
 try:
     while keepGoing:
-        #grab frame information from ICANDI
+        # grab frame information from ICANDI
         time_event_log.append(str(time.clock())+" Starting loop")
         if record_ICANDI:
-            latest_string, latest_strip_updated = h.get_ICANDI_update(socket, strip_positions)
+            latest_string, latest_strip_updated, movie_start_time = h.get_ICANDI_update(
+                socket, strip_positions)
+            if movie_start_time is not None:
+                tracked_on_time = movie_start_time + 0.09 #90 milliseconds
+                tracked_off_time = movie_start_time + 0.12 #120 milliseconds
+
             if first_frame:
                 x0, y0 = strip_positions[15]
                 first_frame = False
-            projector_strip = tracked_strips[int((tracked_strips <= latest_strip_updated).sum())-1] #Find closest tracked strip
+            # Find closest tracked strip
+            projector_strip = tracked_strips[int((
+                tracked_strips <= latest_strip_updated).sum())-1]
             _x, _y = strip_positions[projector_strip]
             del_x, del_y = x0+_x, y0+_y
             fields['tracked_rect']['position'][:2] = (
-                np.array([del_x, del_y]) *  fields['tracked_rect']['size'][0]/256.0  * eye_track_gain +
-                fields['AObackground']['position'][:2]) + np.array([offset_x, offset_y])
+                np.array([del_x, del_y]) *
+                fields['tracked_rect']['size'][0] / 256.0  * eye_track_gain +
+                fields['AObackground']['position'][:2] +
+                np.array([offset_x, offset_y]))
             # need to organize in a list so that match drawn on top of rect
             time_event_log.append(str(time.clock())+" "+latest_string)
+
+            fields['tracked_rect']['color'] = default_tracked_color * float(
+                tracked_on_time <= time.clock() <= tracked_off_time )
         time_event_log.append(str(time.clock())+" About to draw")
         # draw fields to buffer
         for field in field_list:
             h.drawField(fields, field, invGammaTable)
+        # tracked rect is special: ui is in RGB
+        if record_ICANDI or parameters['offlineMatch']:
+            h.drawField(fields, 'tracked_rect', invGammaTable,
+                        convertHSVToRGB=False)
+
         time_event_log.append(str(time.clock())+" Finished drawField")
         # flip new screen
         mywin.flip()
@@ -235,47 +246,42 @@ try:
 
         #set default step_gain
         step_gain = 1
-        if inputDevice != 'logitech':
-            allKeys = event.getKeys(modifiers=True, timeStamped=True)
-            if use_mouse:
-                if mouse.mouseMoved():
-                    mouse_x, mouse_y = mouse.getPos()
-                    d_mouse_x = mouse_x - def_mouse_x2
-                    d_mouse_y = mouse_y - def_mouse_y2
-                    mouse.setPos([def_mouse_x, def_mouse_y])
-                    if mouse_fixed_axes:
-                        if abs(d_mouse_x) > abs(d_mouse_y):
-                            d_mouse_y = 0
-                        else:
-                            d_mouse_x = 0
-                else:
-                    d_mouse_x = 0.0
-                    d_mouse_y = 0.0
 
-                pressed = mouse.getPressed()
-
-                left_click = (pressed[0] == 1 and not left_down)
-                right_click = (pressed[2] == 1 and not right_down)
-                left_down = (pressed[0] == 1)
-                right_down = (pressed[2] == 1)
-
-            if allKeys != None and len(allKeys) > 0:
-                allKeys = allKeys[0]
-                key = allKeys[0]
-                modifier = allKeys[1]
-
-                if modifier['ctrl'] is True or modifier['alt'] is True:
-                    step_gain = 5
-
+        allKeys = event.getKeys(modifiers=True, timeStamped=True)
+        if use_mouse:
+            if mouse.mouseMoved():
+                mouse_x, mouse_y = mouse.getPos()
+                d_mouse_x = mouse_x - def_mouse_x2
+                d_mouse_y = mouse_y - def_mouse_y2
+                mouse.setPos([def_mouse_x, def_mouse_y])
+                if mouse_fixed_axes:
+                    if abs(d_mouse_x) > abs(d_mouse_y):
+                        d_mouse_y = 0
+                    else:
+                        d_mouse_x = 0
             else:
-                allKeys = None
-                key = None
-                modifier = None
+                d_mouse_x = 0.0
+                d_mouse_y = 0.0
+
+            pressed = mouse.getPressed()
+
+            left_click = (pressed[0] == 1 and not left_down)
+            right_click = (pressed[2] == 1 and not right_down)
+            left_down = (pressed[0] == 1)
+            right_down = (pressed[2] == 1)
+
+        if allKeys != None and len(allKeys) > 0:
+            allKeys = allKeys[0]
+            key = allKeys[0]
+            modifier = allKeys[1]
+
+            if modifier['ctrl'] is True or modifier['alt'] is True:
+                step_gain = 5
 
         else:
-            key, modifier = lt.getKeyPress()
-            if modifier == True:
-                step_gain = 5
+            allKeys = None
+            key = None
+            modifier = None
 
         # process user input
         # Save the current setting and move on. Stage 4 == matching stage
@@ -295,25 +301,41 @@ try:
         elif key == 'c':
             if track_size_ratio > 0.01:
                 track_size_ratio -= 0.01
-            fields['tracked_rect']['size'] = fields['match']['size']*track_size_ratio
+            fields['tracked_rect']['size'] = fields['match']['size'] * track_size_ratio
             print track_size_ratio
         elif key == 'r':
             track_size_ratio += 0.01
-            fields['tracked_rect']['size'] = fields['match']['size']*track_size_ratio
+            fields['tracked_rect']['size'] = fields['match']['size'] * track_size_ratio
             print track_size_ratio
-            
+
         elif key == 'h':
             offset_x -= 0.01
             print (offset_x, offset_y)
         elif key == 'j':
             offset_y -= 0.01
             print (offset_x, offset_y)
-        elif key == 'k':
+        elif key == 'u':
             offset_y += 0.01
             print (offset_x, offset_y)
-        elif key == 'l':
+        elif key == 'n':
             offset_x += 0.01
             print (offset_x, offset_y)
+
+        elif key == 'period':
+            # update the lightness
+            AObkgdRGB = cspace.hsv2rgb(fields['AObackground']['color'])
+            fields['tracked_rect']['color'][1:] = AObkgdRGB[1:]
+            if fields['tracked_rect']['color'][0] <= 1.0 - 0.02 * step_gain:
+                fields['tracked_rect']['color'][0] += 0.02 * step_gain
+            print fields['tracked_rect']['color']
+
+        elif key == 'comma':
+            # update the lightness
+            AObkgdRGB = cspace.hsv2rgb(fields['AObackground']['color'])
+            fields['tracked_rect']['color'][1:] = AObkgdRGB[1:]
+            if fields['tracked_rect']['color'][0] >= AObkgdRGB[0] + 0.02 * step_gain:
+                fields['tracked_rect']['color'][0] -= 0.02 * step_gain
+            print fields['tracked_rect']['color']
 
         elif (key in ['ABS_HAT', 'space'] or right_click) and stage == 5:
 
@@ -328,58 +350,9 @@ try:
                 fields['rect']['color'] = h.random_color('hsv')
                 stage = 3
             else:
-                # results
-                hue = fields['match']['color'][0]
-                saturation = fields['match']['color'][1]
-                value = fields['match']['color'][2]
-
-                # add trial to the results structure
-                results['confidence'].append(confidence)
-                results['hue'].append(hue)
-                results['saturation'].append(saturation)
-                results['value'].append(value)
-                results['L_intensity'].append(trial_params.loc[trial].L_intensity)
-                results['M_intensity'].append(trial_params.loc[trial].M_intensity)
-                results['S_intensity'].append(trial_params.loc[trial].S_intensity)
-                results['delta_MB'].append(trial_params.loc[trial].delta_MB)
-                results['new_MB_l'].append(trial_params.loc[trial].new_MB_l)
-                results['new_MB_s'].append(trial_params.loc[trial].new_MB_s)
-
-                # print out some of the results
-                print 'Trial #{0:d}'.format(trial)
-                print 'confidence: {0:d}'.format(confidence)
-                print 'MATCH HSV: ', fields['match']['color']
-
-                _results = pn.DataFrame(results)
-                # update plots in color space
-                matchRGB = cs.hsv2rgb(_results.hue, _results.saturation, _results.value)
-                matchXYZ = cs.rgb2xyz(matchRGB)
-
-                # Convert to LMS and then MB space
-                matchLMS = cs.rgb2lms(matchRGB)
-                matchMB = cs.lms2mb(matchLMS)
-
-                alpha = 0.9
-                matchMB =  matchMB * alpha + (1 - alpha) * backgroundMB
-
-                # Convert to Lab space
-                _matchxyY = cs.xy2xyY(matchXYZ[:, :2], Lab_lum)
-                _matchXYZ = cs.xyY2XYZ(_matchxyY)
-                matchLab = cs.XYZ2Lab(_matchXYZ)
-
-                _results['L*'] = matchLab[:, 0]
-                _results['a*'] = matchLab[:, 1]
-                _results['b*'] = matchLab[:, 2]
-
-                _results['CIE_x'] = matchXYZ[:, 0]
-                _results['CIE_y'] = matchXYZ[:, 1]
-                _results['CIE_z'] = matchXYZ[:, 2]
-
-                _results['match_l'] = matchMB[:, 0]
-                _results['match_s'] = matchMB[:, 1]
-
-                plot.colorSpaces(_results, background, parameters['ID'],
-                                 plotMeans=False, plotShow=False)
+                ui.updateResultsAndPlott(results, fields, confidence, trial_params,
+                                        trial, background, Lab_lum,
+                                        parameters['ID'], alpha=0.66)
 
                 # randomize next match location
                 fields['match']['color'] = h.set_color_to_white('hsv')
@@ -415,7 +388,7 @@ try:
             confidence -= 1
 
         elif key in keymap:
-            fields = h.update_value(keymap[key], fields, active_field,
+            fields = ui.updateValue(keymap[key], fields, active_field,
                                     attribute, step_gain, step_sizes)
 
         elif key in ['q', 'escape', 'BTN_MODE']:
@@ -431,69 +404,20 @@ try:
             temp[1] *= mouse_sensitivity * 180.0 * (
                 tools.monitorunittools.deg2pix(
                     d_mouse_x, mywin.monitor)) / mywin.size[0]
-            fields = h.update_value(temp, fields, active_field,
+            fields = ui.updateValue(temp, fields, active_field,
                                     attribute, step_gain, step_sizes)
             temp[0] = keymap['up'][0]
             temp[1] = keymap['up'][1]
             temp[1] *= mouse_sensitivity * 180.0 * (
                 tools.monitorunittools.deg2pix(
                     d_mouse_y, mywin.monitor)) / mywin.size[1]
-            fields = h.update_value(temp, fields, active_field,
+
+            fields = ui.updateValue(temp, fields, active_field,
                                     attribute, step_gain, step_sizes)
 
-        # now update parameters based on key stroke
-        if stage == 0:
-            active_field = 'fixation'
-            attribute = 'position'
-            field_list = ['canvas', 'fixation']
-
-        elif stage == 1:
-            active_field = 'AObackground'
-            attribute = 'position'
-            if record_ICANDI:
-                field_list = ['canvas', 'AObackground', 'tracked_rect', 'fixation']
-            else:
-                field_list = ['canvas', 'AObackground', 'fixation']
-        elif stage == 2:
-            active_field = 'AObackground'
-            attribute = 'size'
-            if record_ICANDI:
-                field_list = ['canvas', 'AObackground', 'tracked_rect', 'fixation']
-            else:
-                field_list = ['canvas', 'AObackground', 'fixation']
-        elif stage == 3:
-            active_field = 'rect'
-            attribute = 'color'
-            if record_ICANDI:
-                field_list = ['canvas', 'rect', 'AObackground', 'tracked_rect',
-                              'fixation']
-            else:
-                field_list = ['canvas', 'rect', 'AObackground', 'fixation']
-        elif stage == 4 and parameters['onlineMatch']:
-            active_field = 'match'
-            attribute = 'color'
-            if record_ICANDI:
-                field_list = ['canvas', 'rect', 'match', 'AObackground',
-                              'tracked_rect', 'fixation']
-            else:
-                field_list = ['canvas', 'rect', 'match', 'AObackground',
-                          'fixation']
-
-        # stage 5 is where the subject gives an integer
-        # confidence score indicating how close the match was
-        elif stage == 5 and parameters['onlineMatch']:
-            active_field = 'match'
-            attribute = 'color'
-            if record_ICANDI:
-                field_list = ['canvas', 'rect', 'match', 'AObackground',
-                              'tracked_rect', 'fixation']
-            else:
-                field_list = ['canvas', 'rect', 'match', 'AObackground',
-                              'fixation']
-        elif stage == 5 and not parameters['onlineMatch']:
-            active_field = 'rect'
-            attribute = 'color'
-            field_list = ['canvas', 'rect', 'AObackground', 'fixation']
+        # Now update the active fields and list of fields to be displayed.
+        active_field, attribute, field_list = ui.updateFields(
+            stage, parameters['onlineMatch'])
 
         # check that color hasn't gone out of gamut
         for field in fields:
@@ -505,7 +429,7 @@ try:
         fields['rect']['position'] = fields['fixation']['position'] + relDist
         fields['match']['position'] = fields['fixation']['position'] + relDist
         fields['rect']['size'] = fields['AObackground']['size']
-        fields['match']['size'][:2] = parameters['OzSize']
+        #fields['match']['size'][:2] = parameters['OzSize']
         fields['fixation']['size'] = np.array([0.05, 0.05, 0])
         time_event_log.append(str(time.clock())+" Done with mouse loop")
 
@@ -524,9 +448,10 @@ except Exception as e:
     mywin.close()
     core.quit()
 
-if results['new_MB_l'] != []:
-    print 'Saving'
-    h.saveData(parameters, results, fields)
+print 'Saving'
+h.saveData(parameters, results, fields)
+
+if results[results.keys()[0]] != []:
     results = pn.DataFrame(results)
     plot.hueAndSaturation(results, parameters['ID'])
 

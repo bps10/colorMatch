@@ -2,10 +2,37 @@ from __future__ import division
 import numpy as np
 import json, os
 from psychopy.tools import colorspacetools as cspace
-
+from psychopy import monitors
 
 thisdir = os.path.dirname(os.path.abspath(__file__))
 
+
+
+def gammaCorrect(invGammaTable, rgb):
+    # convert rgb in range -1:1 to range 0:255
+    rgb = np.round((rgb + 1) / 2 * 254, 0).astype(int)
+    corrected_rgb = invGammaTable[rgb, [0, 1, 2]]
+    corrected_rgb = corrected_rgb * 2 - 1
+    return corrected_rgb
+
+def gammaInverse(monitorName, currentCalibName):
+    mon = monitors.Monitor(monitorName)
+    mon.setCurrent(currentCalibName)
+    gammaGrid = mon.getGammaGrid()
+    minLum = gammaGrid[:, 0]
+    maxLum = gammaGrid[:, 1]
+    gamma = gammaGrid[:, 2]
+    a = gammaGrid[:, 3]
+    b = gammaGrid[:, 4]
+    k = gammaGrid[:, 5]
+    xx = np.zeros((255, 4))
+    for i in range(4):
+        yy = np.linspace(minLum[i], maxLum[i], 255)
+        xx[:, i] = -(np.log(1e-6+k[i] / (yy - a[i]) - 1) + b[i]) / gamma[i]
+    invGammaTable = xx[:, 1:] # 0 column = luminance which we don't need
+    invGammaTable[np.isnan(invGammaTable)] = 0
+    invGammaTable /= invGammaTable.max(0)
+    return invGammaTable
 
 def normalize_rows(matrix):
     '''

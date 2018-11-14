@@ -100,8 +100,8 @@ def parameters():
     window.CloseNonBlocking()   # Don't forget to close your window!
 
     if values is not None:
-        values['OzSize'] = np.array([float(values['OzHeight']),
-                                     float(values['OzWidth'])])
+        values['OzSize'] = np.array([float(values['OzWidth']),
+                                     float(values['OzHeight'])])
         values['age'] = float(values['age'])
         values['screen'] = int(values['screen'])
         if 'lastFields' in savedParams:
