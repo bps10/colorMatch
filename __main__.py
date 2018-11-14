@@ -23,6 +23,8 @@ socket.setsockopt_string(zmq.SUBSCRIBE, "".decode('ascii'))
 eye_track_gain = 1
 offset_x, offset_y  = 0,0
 track_size_ratio = 1.0
+tracked_on_time = -1.0 #clock time for when the tracked rectangle must be "on"
+tracked_off_time = -1.0 #clock time for when the tracked rectangle must be "off"
 
 thisdir = os.path.dirname(os.path.abspath(__file__))
 
@@ -202,6 +204,7 @@ right_click = False
 del_x, del_y = 0, 0
 strip_positions = dict([(i, [0,0]) for i in range(1,33)]) # Latest positions of every strip
 tracked_strips = np.array(range(10, 26)) # Which strips to use for updating projector.
+default_tracked_color = fields['tracked_rect']['color']
 latest_strip_updated = 1
 #draw the stimuli and update the window
 keepGoing = True
@@ -211,7 +214,9 @@ try:
         #grab frame information from ICANDI
         time_event_log.append(str(time.clock())+" Starting loop")
         if record_ICANDI:
-            latest_string, latest_strip_updated = h.get_ICANDI_update(socket, strip_positions)
+            latest_string, latest_strip_updated, movie_start_time = h.get_ICANDI_update(socket, strip_positions)
+            tracked_on_time = movie_start_time + 0.09 #90 milliseconds
+            tracked_off_time = movie_start_time + 0.12 #120 milliseconds
             if first_frame:
                 x0, y0 = strip_positions[15]
                 first_frame = False
@@ -224,6 +229,7 @@ try:
             # need to organize in a list so that match drawn on top of rect
             time_event_log.append(str(time.clock())+" "+latest_string)
         time_event_log.append(str(time.clock())+" About to draw")
+        fields['tracked_rect']['color'] = default_tracked_color*float( tracked_on_time <= time.clock() <= tracked_off_time )
         # draw fields to buffer
         for field in field_list:
             h.drawField(fields, field, invGammaTable)
