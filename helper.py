@@ -221,9 +221,9 @@ def getFields(parameters, colorSpace, blackColor, canvasSize):
             },
         }
 
-    if 'tracked_rect' not in fields:
-        fields['tracked_rect'] ={'colorSpace': colorSpace,
-                     'color': np.array([50, 1, 0.5]),
+    #if 'tracked_rect' not in fields:
+    fields['tracked_rect'] ={'colorSpace': colorSpace,
+                     'color': np.array([1, 0.9, 0.9]),
                      'size': np.array([parameters['OzSize'][0],
                                         parameters['OzSize'][1], 0]),
                      'position': np.array([0., 0., 0]),
