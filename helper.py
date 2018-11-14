@@ -168,7 +168,8 @@ def saveData(parameters, results, fields):
     f.close()
 
 def getDefaultParameters():
-
+    '''
+    '''
     params = {'isBitsSharp': False,
               'noBitsSharp': True,
               'age': 30.0,

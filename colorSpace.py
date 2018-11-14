@@ -9,6 +9,8 @@ thisdir = os.path.dirname(os.path.abspath(__file__))
 
 
 def gammaCorrect(invGammaTable, rgb):
+    '''
+    '''
     # convert rgb in range -1:1 to range 0:255
     rgb = np.round((rgb + 1) / 2 * 254, 0).astype(int)
     corrected_rgb = invGammaTable[rgb, [0, 1, 2]]
@@ -16,6 +18,8 @@ def gammaCorrect(invGammaTable, rgb):
     return corrected_rgb
 
 def gammaInverse(monitorName, currentCalibName):
+    '''
+    '''
     mon = monitors.Monitor(monitorName)
     mon.setCurrent(currentCalibName)
     gammaGrid = mon.getGammaGrid()
@@ -37,10 +41,12 @@ def gammaInverse(monitorName, currentCalibName):
 def normalize_rows(matrix):
     '''
     '''
-    if matrix.ndim > 1:
+    if matrix.ndim == 2:
         matrix = np.dot(matrix.T, np.diag(1 / matrix.sum(1))).T
-    else:
+    elif matrix.ndim == 1:
         matrix /= matrix.sum()
+    else:
+        raise ValueError('No method for normalizing a matrix >2D.')
     return matrix
 
 def getXYZ_LMS_RGB(plot_basis=False):
@@ -152,6 +158,8 @@ def lms2mb(lms):
     return mb
 
 def check2D(mat):
+    '''
+    '''
     if mat.ndim == 1:
        mat = np.reshape(mat, (1, len(mat)))
     return mat
@@ -198,6 +206,8 @@ def xyY2XYZ(xyY):
     return XYZ
 
 def xy2xyY(xy, Y):
+    '''
+    '''
     xy = check2D(xy)
     return np.hstack([xy, np.ones((len(xy), 1)) * Y])
 
