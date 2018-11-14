@@ -195,7 +195,8 @@ right_click = False
 del_x, del_y = 0, 0
 strip_positions = dict([(i, [0,0]) for i in range(1,33)]) # Latest positions of every strip
 tracked_strips = np.array(range(2, 31)) # Which strips to use for updating projector.
-default_tracked_color = fields['tracked_rect']['color']
+on_color = np.copy(fields['tracked_rect']['color'])
+off_color = np.copy(cspace.hsv2rgb(fields['AObackground']['color']))
 latest_strip_updated = 1
 # draw the stimuli and update the window
 keepGoing = True
@@ -207,9 +208,10 @@ try:
         if record_ICANDI:
             latest_string, latest_strip_updated, movie_start_time = h.get_ICANDI_update(
                 socket, strip_positions)
-            if movie_start_time is not None:
-                tracked_on_time = movie_start_time + 0.09 #90 milliseconds
-                tracked_off_time = movie_start_time + 0.12 #120 milliseconds
+            if movie_start_time >= 0 and movie_start_time >= tracked_off_time:
+                print("Movie started", movie_start_time)
+                tracked_on_time = movie_start_time + 0.06 #60 milliseconds
+                tracked_off_time = tracked_on_time + 0.12 #120 milliseconds
 
             if first_frame:
                 x0, y0 = strip_positions[15]
@@ -227,8 +229,8 @@ try:
             # need to organize in a list so that match drawn on top of rect
             time_event_log.append(str(time.clock())+" "+latest_string)
 
-            fields['tracked_rect']['color'] = default_tracked_color * float(
-                tracked_on_time <= time.clock() <= tracked_off_time )
+            fields['tracked_rect']['color'] = on_color if (
+                tracked_on_time <= time.clock() <= tracked_off_time ) else off_color
         time_event_log.append(str(time.clock())+" About to draw")
         # draw fields to buffer
         for field in field_list:
@@ -324,18 +326,18 @@ try:
         elif key == 'period':
             # update the lightness
             AObkgdRGB = cspace.hsv2rgb(fields['AObackground']['color'])
-            fields['tracked_rect']['color'][1:] = AObkgdRGB[1:]
-            if fields['tracked_rect']['color'][0] <= 1.0 - 0.02 * step_gain:
-                fields['tracked_rect']['color'][0] += 0.02 * step_gain
-            print fields['tracked_rect']['color']
+            on_color[1:] = AObkgdRGB[1:]
+            if on_color[0] <= 1.0 - 0.02 * step_gain:
+                on_color[0] += 0.02 * step_gain
+            print on_color
 
         elif key == 'comma':
             # update the lightness
             AObkgdRGB = cspace.hsv2rgb(fields['AObackground']['color'])
-            fields['tracked_rect']['color'][1:] = AObkgdRGB[1:]
-            if fields['tracked_rect']['color'][0] >= AObkgdRGB[0] + 0.02 * step_gain:
-                fields['tracked_rect']['color'][0] -= 0.02 * step_gain
-            print fields['tracked_rect']['color']
+            on_color[1:] = AObkgdRGB[1:]
+            if on_color[0] >= AObkgdRGB[0] + 0.02 * step_gain:
+                on_color[0] -= 0.02 * step_gain
+            print on_color
 
         elif (key in ['ABS_HAT', 'space'] or right_click) and stage == 5:
 

@@ -2,6 +2,7 @@ from __future__ import division
 import numpy as np
 import os, pickle, datetime, json
 import zmq
+import time
 
 import pandas as pn
 from psychopy.tools import colorspacetools as cspace
@@ -10,30 +11,30 @@ import colorSpace as cs
 
 
 def parse_ICANDI_string(st):
-    if len(st.split()) == 4:
-        _,f,x,y = st.split()
+    if len(st.split()) == 5:
+        _,f,b,x,y = st.split()
         f = str(f)
         y = str(y)[:-2]
     else:
-        f, x, y = st.split()
+        f, b,x, y = st.split()
         f = str(f)[-2:]
         y = str(y)[:-2]
-    return int(f), int(x), int(y), False
+    return int(f), int(x), int(y), int(b)
 
 def get_ICANDI_update(socket, strip_positions): #gets the next up-to-date string from ICANDI
     string = None
-    start_time = None
+    start_time = -1
     while True: #Keep getting updates until exit condition is satisfied.
         try: #once the packet queue runs out, this will throw an error
             while True: # get all the packets in queue, decode them, and put results in a dictionary.
                 st = socket.recv_string(flags=zmq.NOBLOCK)
                 string = st.decode('ascii')
                 f,x,y, movie_start = parse_ICANDI_string(st.decode('ascii'))
-                if movie_start:
+                if movie_start > 0 and start_time==-1:
                     start_time = time.clock()
                 strip_positions[f] = [x,y]
         except Exception as e:
-            if string is not None: #Exit condition: No more packets in queue and there are been at least one packet received so far.
+            if string is not None:
                 return string,f, start_time
 
 def random_color(colorSpace):
