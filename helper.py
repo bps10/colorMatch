@@ -4,8 +4,10 @@ import os, pickle, datetime, json
 import zmq
 
 import pandas as pn
-from psychopy import monitors
 from psychopy.tools import colorspacetools as cspace
+
+import colorSpace as cs
+
 
 def parse_ICANDI_string(st):
     if len(st.split()) == 4:
@@ -17,48 +19,19 @@ def parse_ICANDI_string(st):
         f = str(f)[-2:]
         y = str(y)[:-2]
     return int(f), int(x), int(y)
-    
-    
+
 def get_ICANDI_update(socket, strip_positions): #gets the next up-to-date string from ICANDI
     string = None
     while True: #Keep getting updates until exit condition is satisfied.
         try: #once the packet queue runs out, this will throw an error
             while True: # get all the packets in queue, decode them, and put results in a dictionary.
-                st = socket.recv_string(flags=zmq.NOBLOCK)            
+                st = socket.recv_string(flags=zmq.NOBLOCK)
                 string = st.decode('ascii')
                 f,x,y = parse_ICANDI_string(st.decode('ascii'))
                 strip_positions[f] = [x,y]
         except Exception as e:
             if string is not None: #Exit condition: No more packets in queue and there are been at least one packet received so far.
                 return string,f
-
-
-def gammaCorrect(invGammaTable, rgb):
-    # convert rgb in range -1:1 to range 0:255
-    rgb = np.round((rgb + 1) / 2 * 254, 0).astype(int)
-    corrected_rgb = invGammaTable[rgb, [0, 1, 2]]
-    corrected_rgb = corrected_rgb * 2 - 1
-    return corrected_rgb
-
-
-def gammaInverse(monitorName, currentCalibName):
-    mon = monitors.Monitor(monitorName)
-    mon.setCurrent(currentCalibName)
-    gammaGrid = mon.getGammaGrid()
-    minLum = gammaGrid[:, 0]
-    maxLum = gammaGrid[:, 1]
-    gamma = gammaGrid[:, 2]
-    a = gammaGrid[:, 3]
-    b = gammaGrid[:, 4]
-    k = gammaGrid[:, 5]
-    xx = np.zeros((255, 4))
-    for i in range(4):
-        yy = np.linspace(minLum[i], maxLum[i], 255)
-        xx[:, i] = -(np.log(1e-6+k[i] / (yy - a[i]) - 1) + b[i]) / gamma[i]
-    invGammaTable = xx[:, 1:] # 0 column = luminance which we don't need
-    invGammaTable[np.isnan(invGammaTable)] = 0
-    invGammaTable /= invGammaTable.max(0)
-    return invGammaTable
 
 def random_color(colorSpace):
     if colorSpace == 'hsv':
@@ -115,47 +88,19 @@ def check_color(color, colorSpace):
 
     return color
 
-
-def key_map():
-
-    keymap = {
-        'up': [0, 1],
-        'down': [0, -1],
-        'right': [1, 1],
-        'left': [1, -1],
-        'rshift': [2, -1],
-        'lshift': [2, -1],
-        'return': [2, 1],
-
-        'BTN_NORTH': [0, 1],
-        'BTN_SOUTH': [0, -1],
-        'BTN_EAST': [1, 1],
-        'BTN_WEST': [1, -1],
-        'BTN_TL': [2, -1],
-        'BTN_TR': [2, 1],
-    }
-
-    return keymap
-
-
-def update_value(mapping, fields, active_field, attribute,
-                 step_gain, step_sizes):
+def drawField(fields, field, invGammaTable, convertHSVToRGB=True):
     '''
     '''
-    step_sizes = step_sizes[attribute][mapping[0]]
-    fields[active_field][attribute][mapping[0]] += (
-        (step_sizes * mapping[1]) * step_gain)
-    return fields
-
-
-def drawField(fields, field, invGammaTable):
-    # convert hsv to rgb
-    hsv = fields[field]['color']
-    # double check colors
-    hsv = check_color(hsv, 'hsv')
-    rgb = cspace.hsv2rgb(hsv)
+    if convertHSVToRGB:
+        # convert hsv to rgb
+        hsv = fields[field]['color']
+        # double check colors
+        hsv = check_color(hsv, 'hsv')
+        rgb = cspace.hsv2rgb(hsv)
+    else:
+        rgb = fields[field]['color']
     # gamma correct
-    rgb = gammaCorrect(invGammaTable, rgb)
+    rgb = cs.gammaCorrect(invGammaTable, rgb)
 
     # update parameters of each field and draw
     handle = fields[field]['handle']
@@ -164,72 +109,6 @@ def drawField(fields, field, invGammaTable):
     handle.size = fields[field]['size'][:2]
     handle.pos = fields[field]['position'][:2]
     handle.draw()
-
-
-def getColorMatchDir():
-    '''
-    '''
-    return os.path.dirname(os.path.abspath(__file__))
-
-
-def getFields(parameters, colorSpace, blackColor, canvasSize):
-    '''
-    '''
-    if 'lastFields' in parameters:
-        # read lastFields from file
-        fields = pickle.load(open(parameters['lastFields'], "r"))
-    else:
-        # set up defaults if subject data does not exist
-        fields = {
-            'canvas': {
-                       'colorSpace': colorSpace,
-                       'color': blackColor,
-                       'size': canvasSize,
-                       'position': np.array([0, 0., 0]),
-            },
-            'rect': {
-                     'colorSpace': colorSpace,
-                     'color': np.array([50, 0.5, 0.5]),
-                     'size': np.array([0.95, 0.95, 0]),
-                     'position': np.array([-1., 0., 0]),
-            },
-            'match': {
-                      'colorSpace': colorSpace,
-                      'color':  set_color_to_white('hsv'),
-                      'size': np.array([parameters['OzSize'][0],
-                                        parameters['OzSize'][1], 0]),
-                      'position': np.array([-1., 0., 0]),
-            },
-            'fixation': {
-                         'colorSpace': colorSpace,
-                         'color': np.array([90., 0, 0.9]),
-                         'size': np.array([0.05, 0.05, 0]),
-                         'position': np.array([0., 0., 0]),
-            },
-            'AObackground': {
-                             'colorSpace': colorSpace,
-                             'color': np.array([90, 0.1, 0.4]),
-                             'size': np.array([0.95, 0.95, 0]),
-                             'position': np.array([1., 0., 0]),
-            },
-            'tracked_rect': {
-                     'colorSpace': colorSpace,
-                     'color': np.array([50, 1, 0.5]),
-                     'size': np.array([parameters['OzSize'][0],
-                                        parameters['OzSize'][1], 0]),
-                     'position': np.array([0., 0., 0]),
-            },
-        }
-
-    if 'tracked_rect' not in fields:
-        fields['tracked_rect'] ={'colorSpace': colorSpace,
-                     'color': np.array([50, 1, 0.5]),
-                     'size': np.array([parameters['OzSize'][0],
-                                        parameters['OzSize'][1], 0]),
-                     'position': np.array([0., 0., 0]),
-                    }
-    return fields
-
 
 def getDefaultParameters():
 
@@ -303,6 +182,86 @@ def saveData(parameters, results, fields):
     f.write(paramsName)
     f.close()
 
+def getBackground(fields, Lab_lum):
+    '''
+    '''
+    backgroundHSV = fields['rect']['color']
+    backgroundRGB = cs.hsv2rgb(backgroundHSV[0], backgroundHSV[1], backgroundHSV[2])
+    # now compute LMS values for background
+    backgroundXYZ = cs.rgb2xyz(backgroundRGB)
+    backgroundLMS = cs.rgb2lms(backgroundRGB)
+    backgroundMB = cs.lms2mb(backgroundLMS)[0]
+    backgroundxyY = cs.xy2xyY(backgroundXYZ[:2], Lab_lum)
+    _backgroundXYZ = cs.xyY2XYZ(backgroundxyY)[0]
+    backgroundLab = cs.XYZ2Lab(_backgroundXYZ)[0]
+    # now make background into a dataframe (needed for plotting later)
+    background = pn.DataFrame(columns=['l', 's', 'CIE_x', 'CIE_y', 'a*', 'b*'])
+    background.loc[0] = np.hstack([backgroundMB, backgroundXYZ[:2], backgroundLab[1:]])
+    return background
+
+def getColorMatchDir():
+    '''
+    '''
+    return os.path.dirname(os.path.abspath(__file__))
+
+
+def getFields(parameters, colorSpace, blackColor, canvasSize):
+    '''
+    '''
+    if 'lastFields' in parameters:
+        # read lastFields from file
+        fields = pickle.load(open(parameters['lastFields'], "r"))
+    else:
+        # set up defaults if subject data does not exist
+        fields = {
+            'canvas': {
+                       'colorSpace': colorSpace,
+                       'color': blackColor,
+                       'size': canvasSize,
+                       'position': np.array([0, 0., 0]),
+            },
+            'rect': {
+                     'colorSpace': colorSpace,
+                     'color': np.array([50, 0.5, 0.5]),
+                     'size': np.array([0.95, 0.95, 0]),
+                     'position': np.array([-1., 0., 0]),
+            },
+            'match': {
+                      'colorSpace': colorSpace,
+                      'color':  set_color_to_white('hsv'),
+                      'size': np.array([parameters['OzSize'][0],
+                                        parameters['OzSize'][1], 0]),
+                      'position': np.array([-1., 0., 0]),
+            },
+            'fixation': {
+                         'colorSpace': colorSpace,
+                         'color': np.array([90., 0, 0.9]),
+                         'size': np.array([0.05, 0.05, 0]),
+                         'position': np.array([0., 0., 0]),
+            },
+            'AObackground': {
+                             'colorSpace': colorSpace,
+                             'color': np.array([90, 0.1, 0.4]),
+                             'size': np.array([0.95, 0.95, 0]),
+                             'position': np.array([1., 0., 0]),
+            },
+            'tracked_rect': {
+                     'colorSpace': colorSpace,
+                     'color': np.array([50, 1, 0.5]),
+                     'size': np.array([parameters['OzSize'][0],
+                                        parameters['OzSize'][1], 0]),
+                     'position': np.array([0., 0., 0]),
+            },
+        }
+
+    #if 'tracked_rect' not in fields:
+    fields['tracked_rect'] ={'colorSpace': 'rgb',
+                             'color': np.array([0, 0, 0]),
+                             'size': np.array([parameters['OzSize'][0],
+                                               parameters['OzSize'][1], 0]),
+                             'position': np.array([0., 0., 0]),
+    }
+    return fields
 
 def loadMBandLightCrafter():
     '''
@@ -328,3 +287,4 @@ def loadMBandLightCrafter():
     primariesMB[:, 1] = primariesLMS[:, 2] / primariesLMS[:, :2].sum(1)
 
     return mb, primariesMB
+
