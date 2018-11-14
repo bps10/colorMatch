@@ -291,15 +291,6 @@ try:
             confidence = 0
             stage = 5
 
-        # control the gain on the ICANDI x,y position coordinates
-##        elif key == 'v':
-##            if eye_track_gain > 0.00005:
-##                eye_track_gain -= 0.00005
-##            print eye_track_gain
-##        elif key == 't':
-##            eye_track_gain += 0.00005
-##            print eye_track_gain
-
         elif key == 'c':
             if track_size_ratio > 0.01:
                 track_size_ratio -= 0.01
@@ -354,7 +345,7 @@ try:
             else:
                 AObkgdRGB = cspace.hsv2rgb(fields['AObackground']['color'])
                 results['tracked_rect_color'].append(on_color)
-                on_color = AObkgdRGB                
+                on_color = AObkgdRGB
                 ui.updateResultsAndPlot(results, fields, confidence, trial_params,
                                         trial, background, Lab_lum,
                                         parameters['ID'], alpha=0.66)
@@ -396,7 +387,7 @@ try:
             fields = ui.updateValue(keymap[key], fields, active_field,
                                     attribute, step_gain, step_sizes)
 
-        elif key in ['q', 'escape', 'BTN_MODE']:
+        elif key in ['escape', 'BTN_MODE']:
             keepGoing = False
 
         time_event_log.append(str(time.clock())+" about to enter mouse loop")
