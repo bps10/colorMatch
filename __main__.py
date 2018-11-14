@@ -234,7 +234,7 @@ try:
         for field in field_list:
             h.drawField(fields, field, invGammaTable)
         # tracked rect is special: ui is in RGB
-        if record_ICANDI:
+        if record_ICANDI or parameters['offlineMatch']:
             h.drawField(fields, 'tracked_rect', invGammaTable,
                         convertHSVToRGB=False)
 
@@ -325,7 +325,7 @@ try:
             # update the lightness
             AObkgdRGB = cspace.hsv2rgb(fields['AObackground']['color'])
             fields['tracked_rect']['color'][1:] = AObkgdRGB[1:]
-            if fields['tracked_rect']['color'][0] < 1 - 0.02 * step_gain:
+            if fields['tracked_rect']['color'][0] <= 1.0 - 0.02 * step_gain:
                 fields['tracked_rect']['color'][0] += 0.02 * step_gain
             print fields['tracked_rect']['color']
 
@@ -333,7 +333,7 @@ try:
             # update the lightness
             AObkgdRGB = cspace.hsv2rgb(fields['AObackground']['color'])
             fields['tracked_rect']['color'][1:] = AObkgdRGB[1:]
-            if fields['tracked_rect']['color'][0] > AObkgdRGB[0] + 0.02 * step_gain:
+            if fields['tracked_rect']['color'][0] >= AObkgdRGB[0] + 0.02 * step_gain:
                 fields['tracked_rect']['color'][0] -= 0.02 * step_gain
             print fields['tracked_rect']['color']
 
@@ -451,7 +451,7 @@ except Exception as e:
 print 'Saving'
 h.saveData(parameters, results, fields)
 
-if results['new_MB_l'] != []:
+if results[results.keys()[0]] != []:
     results = pn.DataFrame(results)
     plot.hueAndSaturation(results, parameters['ID'])
 
