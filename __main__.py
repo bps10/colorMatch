@@ -140,11 +140,11 @@ fields['tracked_rect']['handle'] = tracked_rect
 # explicitly set the AObackground color. In the future get this from parameters
 fields['AObackground']['color'] = np.array([210, 0.1, 0.3])
 fields['match']['color'] = h.set_color_to_white('hsv')
-
+fields['match']['size'] = parameters['OzSize']
 #
 fields['tracked_rect']['position'] = np.copy(fields['AObackground']['position'])
-fields['tracked_rect']['size'] = fields['match']['size']
 fields['tracked_rect']['color'] = cspace.hsv2rgb(fields['AObackground']['color'])
+fields['tracked_rect']['size'] = parameters['OzSize']
 
 field_list = ['canvas', 'fixation']
 step_sizes = {
@@ -226,9 +226,10 @@ try:
                 np.array([offset_x, offset_y]))
             # need to organize in a list so that match drawn on top of rect
             time_event_log.append(str(time.clock())+" "+latest_string)
+
+            fields['tracked_rect']['color'] = default_tracked_color * float(
+                tracked_on_time <= time.clock() <= tracked_off_time )
         time_event_log.append(str(time.clock())+" About to draw")
-        fields['tracked_rect']['color'] = default_tracked_color*float(
-            tracked_on_time <= time.clock() <= tracked_off_time )
         # draw fields to buffer
         for field in field_list:
             h.drawField(fields, field, invGammaTable)
@@ -300,11 +301,11 @@ try:
         elif key == 'c':
             if track_size_ratio > 0.01:
                 track_size_ratio -= 0.01
-            fields['tracked_rect']['size'] = fields['match']['size']*track_size_ratio
+            fields['tracked_rect']['size'] = fields['match']['size'] * track_size_ratio
             print track_size_ratio
         elif key == 'r':
             track_size_ratio += 0.01
-            fields['tracked_rect']['size'] = fields['match']['size']*track_size_ratio
+            fields['tracked_rect']['size'] = fields['match']['size'] * track_size_ratio
             print track_size_ratio
 
         elif key == 'h':
@@ -324,15 +325,17 @@ try:
             # update the lightness
             AObkgdRGB = cspace.hsv2rgb(fields['AObackground']['color'])
             fields['tracked_rect']['color'][1:] = AObkgdRGB[1:]
-            if fields['tracked_rect']['color'][0] < 0.98:
-                fields['tracked_rect']['color'][0] += 0.02
+            if fields['tracked_rect']['color'][0] < 1 - 0.02 * step_gain:
+                fields['tracked_rect']['color'][0] += 0.02 * step_gain
+            print fields['tracked_rect']['color']
 
         elif key == 'comma':
             # update the lightness
             AObkgdRGB = cspace.hsv2rgb(fields['AObackground']['color'])
             fields['tracked_rect']['color'][1:] = AObkgdRGB[1:]
-            if fields['tracked_rect']['color'][0] > AObkgdRGB[0] + 0.02:
-                fields['tracked_rect']['color'][0] -= 0.02
+            if fields['tracked_rect']['color'][0] > AObkgdRGB[0] + 0.02 * step_gain:
+                fields['tracked_rect']['color'][0] -= 0.02 * step_gain
+            print fields['tracked_rect']['color']
 
         elif (key in ['ABS_HAT', 'space'] or right_click) and stage == 5:
 
@@ -421,8 +424,6 @@ try:
             fields[field]['color'] = h.check_color(
                 fields[field]['color'], colorSpace)
 
-        fields['tracked_rect']['size'] = fields['match']['size'] * track_size_ratio
-        fields['match']['size'] = fields['match']['size'] * track_size_ratio
         # The position of rect and match are yoked to AO background
         relDist = fields['fixation']['position'] - fields['AObackground']['position']
         fields['rect']['position'] = fields['fixation']['position'] + relDist
