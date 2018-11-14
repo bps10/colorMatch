@@ -215,8 +215,9 @@ try:
         time_event_log.append(str(time.clock())+" Starting loop")
         if record_ICANDI:
             latest_string, latest_strip_updated, movie_start_time = h.get_ICANDI_update(socket, strip_positions)
-            tracked_on_time = movie_start_time + 0.09 #90 milliseconds
-            tracked_off_time = movie_start_time + 0.12 #120 milliseconds
+            if movie_start_time is not None:
+                tracked_on_time = movie_start_time + 0.09 #90 milliseconds
+                tracked_off_time = movie_start_time + 0.12 #120 milliseconds
             if first_frame:
                 x0, y0 = strip_positions[15]
                 first_frame = False
