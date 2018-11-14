@@ -169,7 +169,7 @@ background = h.getBackground(fields, Lab_lum)
 # --- set up results
 results = {'confidence': [], 'hue': [], 'saturation': [], 'value': [],
            'L_intensity': [], 'M_intensity': [], 'S_intensity': [],
-           'delta_MB': [], 'new_MB_l': [], 'new_MB_s': [], }
+           'delta_MB': [], 'new_MB_l': [], 'new_MB_s': [], 'tracked_rect_color':[]}
 
 if parameters['offlineMatch']:
     results = {'confidence': [], 'reference': {}, 'match': {}, }
@@ -209,7 +209,7 @@ try:
             latest_string, latest_strip_updated, movie_start_time = h.get_ICANDI_update(
                 socket, strip_positions)
             if movie_start_time >= 0 and movie_start_time >= tracked_off_time:
-                print("Movie started", movie_start_time)
+##                print("Movie started", movie_start_time)
                 tracked_on_time = movie_start_time + 0.06 #60 milliseconds
                 tracked_off_time = tracked_on_time + 0.12 #120 milliseconds
 
@@ -314,13 +314,13 @@ try:
             offset_x -= 0.01
             print (offset_x, offset_y)
         elif key == 'j':
-            offset_y -= 0.01
+            offset_x += 0.01
             print (offset_x, offset_y)
         elif key == 'u':
             offset_y += 0.01
             print (offset_x, offset_y)
         elif key == 'n':
-            offset_x += 0.01
+            offset_y -= 0.01
             print (offset_x, offset_y)
 
         elif key == 'period':
@@ -352,7 +352,10 @@ try:
                 fields['rect']['color'] = h.random_color('hsv')
                 stage = 3
             else:
-                ui.updateResultsAndPlott(results, fields, confidence, trial_params,
+                AObkgdRGB = cspace.hsv2rgb(fields['AObackground']['color'])
+                results['tracked_rect_color'].append(on_color)
+                on_color = AObkgdRGB                
+                ui.updateResultsAndPlot(results, fields, confidence, trial_params,
                                         trial, background, Lab_lum,
                                         parameters['ID'], alpha=0.66)
 

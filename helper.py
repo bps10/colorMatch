@@ -14,11 +14,11 @@ def parse_ICANDI_string(st):
     if len(st.split()) == 5:
         _,f,b,x,y = st.split()
         f = str(f)
-        y = str(y)[:-2]
+        y = str(y)
     else:
         f, b,x, y = st.split()
         f = str(f)[-2:]
-        y = str(y)[:-2]
+        y = str(y)
     return int(f), int(x), int(y), int(b)
 
 def get_ICANDI_update(socket, strip_positions): #gets the next up-to-date string from ICANDI
