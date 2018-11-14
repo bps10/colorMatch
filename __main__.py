@@ -22,8 +22,10 @@ socket.connect("tcp://192.168.137.4:5556")
 socket.setsockopt_string(zmq.SUBSCRIBE, "".decode('ascii'))
 
 eye_track_gain = 1
-offset_x, offset_y  = 0,0
-track_size_ratio = 1.0
+offset_x, offset_y  = 0.01,0
+track_size_ratio = 1.05
+tracked_on_time = -1.0 #clock time for when the tracked rectangle must be "on"
+tracked_off_time = -1.0 #clock time for when the tracked rectangle must be "off"
 
 thisdir = os.path.dirname(os.path.abspath(__file__))
 
@@ -121,7 +123,7 @@ match = visual.GratingStim(win=mywin, color=(0., 0.5, 0.1), size=2,
 fixation = visual.GratingStim(win=mywin, size=0.2, pos=[0.,0.], sf=0, rgb=-1)
 AObackground = visual.GratingStim(win=mywin, color=(0., 0.5, 0.5), size=5,
                                   colorSpace=colorSpace, pos=rect.pos * -1.0, sf=0)
-tracked_rect = visual.GratingStim(win=mywin, color=(50, 1, 0.5), size=match.size,
+tracked_rect = visual.GratingStim(win=mywin, color=(0, 1, 1), size=match.size,
                                colorSpace=colorSpace, pos=AObackground.pos, sf=0)
 # get last set of fields if it exists
 fields = h.getFields(parameters, colorSpace, blackColor, canvasSize)
@@ -138,6 +140,7 @@ fields['tracked_rect']['handle'] = tracked_rect
 # explicitly set the AObackground color. In the future get this from parameters
 fields['AObackground']['color'] = np.array([210, 0.1, 0.3])
 fields['match']['color'] = h.set_color_to_white('hsv')
+
 #
 fields['tracked_rect']['position'] = np.copy(fields['AObackground']['position'])
 fields['tracked_rect']['size'] = fields['match']['size']
@@ -191,7 +194,8 @@ right_down = False
 right_click = False
 del_x, del_y = 0, 0
 strip_positions = dict([(i, [0,0]) for i in range(1,33)]) # Latest positions of every strip
-tracked_strips = np.array(range(10, 26)) # Which strips to use for updating projector.
+tracked_strips = np.array(range(2, 31)) # Which strips to use for updating projector.
+default_tracked_color = fields['tracked_rect']['color']
 latest_strip_updated = 1
 # draw the stimuli and update the window
 keepGoing = True
@@ -201,8 +205,12 @@ try:
         # grab frame information from ICANDI
         time_event_log.append(str(time.clock())+" Starting loop")
         if record_ICANDI:
-            latest_string, latest_strip_updated = h.get_ICANDI_update(
+            latest_string, latest_strip_updated, movie_start_time = h.get_ICANDI_update(
                 socket, strip_positions)
+            if movie_start_time is not None:
+                tracked_on_time = movie_start_time + 0.09 #90 milliseconds
+                tracked_off_time = movie_start_time + 0.12 #120 milliseconds
+
             if first_frame:
                 x0, y0 = strip_positions[15]
                 first_frame = False
@@ -219,6 +227,8 @@ try:
             # need to organize in a list so that match drawn on top of rect
             time_event_log.append(str(time.clock())+" "+latest_string)
         time_event_log.append(str(time.clock())+" About to draw")
+        fields['tracked_rect']['color'] = default_tracked_color*float(
+            tracked_on_time <= time.clock() <= tracked_off_time )
         # draw fields to buffer
         for field in field_list:
             h.drawField(fields, field, invGammaTable)
@@ -279,32 +289,34 @@ try:
             stage = 5
 
         # control the gain on the ICANDI x,y position coordinates
-        elif key == 'v':
-            if eye_track_gain > 0.00005:
-                eye_track_gain -= 0.00005
-            print eye_track_gain
-        elif key == 't':
-            eye_track_gain += 0.00005
-            print eye_track_gain
+##        elif key == 'v':
+##            if eye_track_gain > 0.00005:
+##                eye_track_gain -= 0.00005
+##            print eye_track_gain
+##        elif key == 't':
+##            eye_track_gain += 0.00005
+##            print eye_track_gain
 
         elif key == 'c':
             if track_size_ratio > 0.01:
                 track_size_ratio -= 0.01
+            fields['tracked_rect']['size'] = fields['match']['size']*track_size_ratio
             print track_size_ratio
         elif key == 'r':
             track_size_ratio += 0.01
+            fields['tracked_rect']['size'] = fields['match']['size']*track_size_ratio
             print track_size_ratio
 
-        elif key == 'j':
+        elif key == 'h':
             offset_x -= 0.01
             print (offset_x, offset_y)
-        elif key == 'k':
+        elif key == 'j':
             offset_y -= 0.01
             print (offset_x, offset_y)
-        elif key == 'i':
+        elif key == 'u':
             offset_y += 0.01
             print (offset_x, offset_y)
-        elif key == 'm':
+        elif key == 'n':
             offset_x += 0.01
             print (offset_x, offset_y)
 

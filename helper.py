@@ -18,20 +18,23 @@ def parse_ICANDI_string(st):
         f, x, y = st.split()
         f = str(f)[-2:]
         y = str(y)[:-2]
-    return int(f), int(x), int(y)
+    return int(f), int(x), int(y), False
 
 def get_ICANDI_update(socket, strip_positions): #gets the next up-to-date string from ICANDI
     string = None
+    start_time = None
     while True: #Keep getting updates until exit condition is satisfied.
         try: #once the packet queue runs out, this will throw an error
             while True: # get all the packets in queue, decode them, and put results in a dictionary.
                 st = socket.recv_string(flags=zmq.NOBLOCK)
                 string = st.decode('ascii')
-                f,x,y = parse_ICANDI_string(st.decode('ascii'))
+                f,x,y, movie_start = parse_ICANDI_string(st.decode('ascii'))
+                if movie_start:
+                    start_time = time.clock()
                 strip_positions[f] = [x,y]
         except Exception as e:
             if string is not None: #Exit condition: No more packets in queue and there are been at least one packet received so far.
-                return string,f
+                return string,f, start_time
 
 def random_color(colorSpace):
     if colorSpace == 'hsv':
@@ -110,24 +113,6 @@ def drawField(fields, field, invGammaTable, convertHSVToRGB=True):
     handle.pos = fields[field]['position'][:2]
     handle.draw()
 
-def getDefaultParameters():
-
-    params = {'isBitsSharp': False,
-              'noBitsSharp': True,
-              'age': 30.0,
-              'leftEye': False,
-              'rightEye': True,
-              'OzWidth': '0.2',
-              'OzHeight': '0.45',
-              'ID': 'test',
-              'screen': 0,
-              'offlineMatch': False,
-              'onlineMatch': True,
-              'noICANDI': True,
-              'yesICANDI': False,
-              }
-    return params
-
 def checkDir(directory):
     '''
     '''
@@ -181,6 +166,24 @@ def saveData(parameters, results, fields):
     f = open(os.path.join(basedir, 'dat', 'lastParameters.txt'), 'w')
     f.write(paramsName)
     f.close()
+
+def getDefaultParameters():
+
+    params = {'isBitsSharp': False,
+              'noBitsSharp': True,
+              'age': 30.0,
+              'leftEye': False,
+              'rightEye': True,
+              'OzWidth': '0.2',
+              'OzHeight': '0.45',
+              'ID': 'test',
+              'screen': 0,
+              'offlineMatch': False,
+              'onlineMatch': True,
+              'noICANDI': True,
+              'yesICANDI': False,
+              }
+    return params
 
 def getBackground(fields, Lab_lum):
     '''
